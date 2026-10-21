@@ -12,7 +12,7 @@ Feature-oriented; each feature keeps its own `domain/` (pure Dart), `data/` and 
 | --- | --- |
 | `app/` | `SuceavaPulseApp` (wiring of controllers) and `AppShell` (bottom navigation). |
 | `core/` | `Clock`, `BucharestTime` (all time-zone logic), theme, Romanian strings and formatters, shared widgets (notice banner, loading/message views). |
-| `features/transport/` | Shared model: `TransportService`, `TransportType`, `ArrivalStatus`, `DataQuality`; `TransportRepository` + `MockTransportRepository`; status/type styling and `StatusBadge`. |
+| `features/transport/` | Shared model (plus `data/sources/`: source catalog, backend config validation, normalized-JSON parser; see `docs/DATA_SOURCE_FEASIBILITY.md`): `TransportService`, `TransportType`, `ArrivalStatus`, `DataQuality`; `TransportRepository` + `MockTransportRepository`; status/type styling and `StatusBadge`. |
 | `features/arrivals/` | `ServiceFilter` (type + search), `ArrivalsController`, arrivals page, `ArrivalCard`, freshness/stale/error banners, service details sheet. |
 | `features/dashboard/` | `DemandOverview` heuristic, dashboard page, `DemandCard`. |
 | `features/settings/` | `NotificationPreferences` (+ validated JSON codec), `PreferencesStore` + `SharedPreferencesStore`, `PreferencesController`, settings page. |
@@ -35,6 +35,10 @@ State management is plain `ChangeNotifier` + `ListenableBuilder`, with no extra 
   - *Quiet hours* (Bucharest wall clock; start inclusive, end exclusive; start > end crosses midnight; start == end is an empty period, never quiet; disabled never matches). Policy: **arrival reminders are suppressed** (not sent and recorded as handled, so they do not appear when quiet hours end; a later, tighter threshold still fires), because a late reminder is useless. **Delay alerts are deferred** (not sent and not recorded), so the first evaluation after quiet hours sends them if the service is still relevant and still delayed past the threshold. Both are reported in `EvaluationResult.suppressedByQuietHours` / `deferredByQuietHours`.
   - *Idempotency key*: `<service id>|<service date>|<kind>|<threshold>`, e.g. `ir1831|2026-10-21|arrivalReminder|15`. The date is explicit even if the id contains it; the threshold separates reminders; for delays it is the user's delay threshold.
 - **Persistent duplicate suppression** (`AlertEngine`): wraps the evaluator with a history of handled keys saved through `AlertHistoryStore` (`shared_preferences`, one JSON object `key -> ISO-8601 UTC`). Keys are recorded when an evaluation returns them, before any delivery, so delivery is at-most-once: a failure can lose an alert but never repeat one. Keys older than 2 days are pruned. If the history cannot be loaded it starts empty (an alert may repeat once); if it cannot be saved, the in-memory history still suppresses duplicates for the session (`lastSaveFailed`). The engine is not yet wired into the UI.
+
+## Real data (Phase 2)
+
+No real source is connected. `docs/DATA_SOURCE_FEASIBILITY.md` records what was verified for flights, trains and coaches, and what needs credentials or written permission. Provider adapters and keys belong on a backend; the app only parses one normalized JSON contract (`NormalizedArrivalsParser`). `AlertEngine` must stay disconnected from providers until their freshness and timestamp semantics are known.
 
 ## Planned boundaries (not built yet)
 

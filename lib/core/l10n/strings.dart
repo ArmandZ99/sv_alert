@@ -140,6 +140,18 @@ abstract final class Strings {
   static const sectionFollowed = 'Curse urmărite';
   static const followedNone =
       'Nicio cursă aleasă. Se urmăresc toate cursele din tipurile selectate.';
+  static const sectionDataSources = 'Surse de date';
+  static const dataSourcesIntro =
+      'Momentan toate datele afișate sunt demonstrative. Nicio sursă reală nu '
+      'este conectată; mai jos este starea surselor analizate.';
+  static const sourceVerified = 'Verificată';
+  static const sourceAwaitingCredentials = 'Necesită cont sau cheie API';
+  static const sourceAwaitingPermission = 'Necesită permisiune scrisă';
+  static const sourceAwaitingVerification = 'De verificat';
+  static const sourceUnavailable = 'Indisponibilă';
+  static const sourceScheduledOnly = 'doar orar';
+  static const sourceLiveClaimed = 'ar putea oferi estimări live (neverificat)';
+  static const sourceNatureUnknown = 'conținut neclar';
   static const sectionAbout = 'Despre';
   static const aboutPrivacy =
       'Versiunea curentă nu creează conturi și nu trimite date personale. '

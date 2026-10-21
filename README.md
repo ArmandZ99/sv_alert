@@ -64,4 +64,5 @@ Cere-i să citească `claude_suceava_travel_alerts_prompt.md` și să continue i
 - `test/` — teste unitare (domeniu, date, controller) și teste de widget (panou, filtre, stări, detalii, setări).
 - `claude_suceava_travel_alerts_prompt.md` — specificația completă pentru Claude Code.
 - `docs/ARCHITECTURE.md` — note despre arhitectură și limitele MVP-ului.
+- `docs/DATA_SOURCE_FEASIBILITY.md` — ce surse de date reale există pentru zboruri, trenuri și autocare și ce lipsește pentru integrare.
 - `backend/README.md` și `infrastructure/README.md` — pași pentru fazele viitoare.

@@ -429,6 +429,18 @@ void main() {
       expect(find.text('07:00'), findsOneWidget);
     });
 
+    testWidgets('states that no real data source is connected', (tester) async {
+      await pumpApp(tester);
+      await openTab(tester, 'Setări');
+      await tester.scrollUntilVisible(find.text('SURSE DE DATE'), 200);
+      expect(
+        find.textContaining('Nicio sursă reală nu este conectată'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Necesită permisiune scrisă'), findsWidgets);
+      expect(find.textContaining('Verificată'), findsNothing);
+    });
+
     testWidgets('states the app is independent', (tester) async {
       await pumpApp(tester);
       await openTab(tester, 'Setări');

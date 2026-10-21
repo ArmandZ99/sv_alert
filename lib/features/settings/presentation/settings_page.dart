@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'data_sources_card.dart';
+
 import '../domain/notification_preferences.dart';
 import '../../transport/domain/transport_type.dart';
 import '../../../core/l10n/formatters.dart';
@@ -221,6 +223,9 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 18),
+            const _SectionTitle(Strings.sectionDataSources),
+            const DataSourcesCard(),
             const SizedBox(height: 18),
             const _SectionTitle(Strings.sectionAbout),
             const Card(
