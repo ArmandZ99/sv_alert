@@ -59,8 +59,10 @@ Cere-i să citească `claude_suceava_travel_alerts_prompt.md` și să continue i
 
 ## Structură inclusă în starter
 
-- `lib/main.dart` — dashboard, filtre pentru toate cele 3 transporturi, detalii de cursă, setări de praguri și indicatorul Demand Radar.
-- `test/widget_test.dart` — teste inițiale pentru dashboard și navigare.
+- `lib/domain/` — modele și reguli (servicii de transport, stări, filtre, estimare cerere potențială, preferințe).
+- `lib/data/` — interfața `TransportRepository` și `MockTransportRepository` (date demonstrative).
+- `lib/presentation/` — controllere, teme, texte în română, widgeturi și pagini (panou, sosiri, setări, detalii).
+- `test/` — teste unitare (domeniu, date, controller) și teste de widget (panou, filtre, stări, detalii, setări).
 - `claude_suceava_travel_alerts_prompt.md` — specificația completă pentru Claude Code.
 - `docs/ARCHITECTURE.md` — note despre arhitectură și limitele MVP-ului.
 - `backend/README.md` și `infrastructure/README.md` — pași pentru fazele viitoare.
