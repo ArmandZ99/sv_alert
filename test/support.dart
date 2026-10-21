@@ -1,7 +1,7 @@
-import 'package:travelalerts/data/transport_repository.dart';
-import 'package:travelalerts/domain/arrival_status.dart';
-import 'package:travelalerts/domain/transport_service.dart';
-import 'package:travelalerts/domain/transport_type.dart';
+import 'package:travelalerts/features/transport/data/transport_repository.dart';
+import 'package:travelalerts/features/transport/domain/arrival_status.dart';
+import 'package:travelalerts/features/transport/domain/transport_service.dart';
+import 'package:travelalerts/features/transport/domain/transport_type.dart';
 
 final DateTime testNow = DateTime(2026, 10, 21, 12, 0);
 

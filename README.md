@@ -59,9 +59,8 @@ Cere-i să citească `claude_suceava_travel_alerts_prompt.md` și să continue i
 
 ## Structură inclusă în starter
 
-- `lib/domain/` — modele și reguli (servicii de transport, stări, filtre, estimare cerere potențială, preferințe).
-- `lib/data/` — interfața `TransportRepository` și `MockTransportRepository` (date demonstrative).
-- `lib/presentation/` — controllere, teme, texte în română, widgeturi și pagini (panou, sosiri, setări, detalii).
+- `lib/app/`, `lib/core/` — inițializare, navigație, temă, texte în română.
+- `lib/features/` — `transport` (modele, surse), `arrivals` (listă, filtre, detalii), `dashboard` (panou, potențial de cerere), `settings` (preferințe persistente), `notifications` (logica deciziei de alertare, fără trimitere).
 - `test/` — teste unitare (domeniu, date, controller) și teste de widget (panou, filtre, stări, detalii, setări).
 - `claude_suceava_travel_alerts_prompt.md` — specificația completă pentru Claude Code.
 - `docs/ARCHITECTURE.md` — note despre arhitectură și limitele MVP-ului.

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:travelalerts/data/transport_repository.dart';
-import 'package:travelalerts/domain/transport_type.dart';
-import 'package:travelalerts/presentation/state/arrivals_controller.dart';
+import 'package:travelalerts/features/transport/data/transport_repository.dart';
+import 'package:travelalerts/features/transport/domain/transport_type.dart';
+import 'package:travelalerts/features/arrivals/presentation/arrivals_controller.dart';
 
 import '../support.dart';
 

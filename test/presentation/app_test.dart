@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:travelalerts/app.dart';
-import 'package:travelalerts/data/mock_transport_repository.dart';
-import 'package:travelalerts/data/transport_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:travelalerts/features/settings/data/preferences_store.dart';
+import 'package:travelalerts/features/settings/domain/notification_preferences.dart';
+import 'package:travelalerts/app/app.dart';
+import 'package:travelalerts/features/transport/data/mock_transport_repository.dart';
+import 'package:travelalerts/features/transport/data/transport_repository.dart';
 
 import '../support.dart';
 
@@ -14,6 +17,8 @@ Future<void> pumpApp(
   TransportRepository? repository,
   bool settle = true,
   double height = 12000,
+  PreferencesStore? store,
+  NotificationPreferences initialPreferences = const NotificationPreferences(),
 }) async {
   // Tall logical viewport (360 x 4000) so lazy lists build most of their items
   // while still exercising a small-phone width.
@@ -21,7 +26,12 @@ Future<void> pumpApp(
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    SuceavaPulseApp(repository: repository ?? mockRepo(), clock: () => testNow),
+    SuceavaPulseApp(
+      repository: repository ?? mockRepo(),
+      clock: () => testNow,
+      preferencesStore: store,
+      initialPreferences: initialPreferences,
+    ),
   );
   if (settle) await tester.pumpAndSettle();
 }
@@ -51,7 +61,10 @@ void main() {
         expect(find.text('Actualizat chiar acum'), findsOneWidget);
         expect(find.text('POTENȚIAL DE CERERE'), findsOneWidget);
         expect(find.text('EXEMPLU'), findsOneWidget);
-        expect(find.textContaining('Nu măsoară cererea reală'), findsOneWidget);
+        expect(
+          find.textContaining('Nu reprezintă comenzi Bolt reale'),
+          findsOneWidget,
+        );
         expect(find.text('Sosiri următoare'), findsOneWidget);
         // Soonest upcoming service first; arrived and expired ones are hidden.
         expect(find.text('IR 1831'), findsOneWidget);
@@ -327,6 +340,76 @@ void main() {
         isNull,
       );
       expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNull);
+    });
+
+    testWidgets('alert categories switch their own controls', (tester) async {
+      await pumpApp(tester);
+      await openTab(tester, 'Setări');
+      final chip = find.widgetWithText(FilterChip, '10 min');
+
+      await tester.tap(
+        find.widgetWithText(SwitchListTile, 'Alerte înainte de sosire'),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilterChip>(chip).onSelected, isNull);
+      expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNotNull);
+
+      await tester.tap(
+        find.widgetWithText(SwitchListTile, 'Alerte de întârziere'),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNull);
+    });
+
+    testWidgets('settings are saved and restored after a restart', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = await SharedPreferencesStore.create();
+      await pumpApp(
+        tester,
+        store: store,
+        initialPreferences: await store.load(),
+      );
+      await openTab(tester, 'Setări');
+
+      await tester.tap(
+        find.widgetWithText(SwitchListTile, 'Alerte de întârziere'),
+      );
+      await tester.tap(find.widgetWithText(FilterChip, '10 min'));
+      await tester.pumpAndSettle();
+
+      // Restart: a fresh app tree that loads what was saved.
+      await tester.pumpWidget(const SizedBox());
+      await pumpApp(
+        tester,
+        store: store,
+        initialPreferences: await store.load(),
+      );
+      await openTab(tester, 'Setări');
+
+      expect(
+        tester
+            .widget<SwitchListTile>(
+              find.widgetWithText(SwitchListTile, 'Alerte de întârziere'),
+            )
+            .value,
+        isFalse,
+      );
+      expect(
+        tester
+            .widget<FilterChip>(find.widgetWithText(FilterChip, '10 min'))
+            .selected,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<SwitchListTile>(
+              find.widgetWithText(SwitchListTile, 'Alerte înainte de sosire'),
+            )
+            .value,
+        isTrue,
+      );
     });
 
     testWidgets('quiet hours reveal their time rows', (tester) async {

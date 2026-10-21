@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:travelalerts/domain/arrival_status.dart';
+import 'package:travelalerts/features/transport/domain/arrival_status.dart';
 
 import '../support.dart';
 

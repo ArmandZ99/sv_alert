@@ -1,12 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:travelalerts/domain/notification_preferences.dart';
-import 'package:travelalerts/domain/transport_type.dart';
-import 'package:travelalerts/presentation/state/preferences_controller.dart';
+import 'package:travelalerts/features/settings/domain/notification_preferences.dart';
+import 'package:travelalerts/features/transport/domain/transport_type.dart';
+import 'package:travelalerts/features/settings/presentation/preferences_controller.dart';
 
 void main() {
   test('defaults match the specification', () {
     const prefs = NotificationPreferences();
     expect(prefs.enabled, isTrue);
+    expect(prefs.arrivalAlertsEnabled, isTrue);
+    expect(prefs.delayAlertsEnabled, isTrue);
     expect(prefs.reminderMinutes, [30, 15, 5]);
     expect(prefs.delayThresholdMinutes, 15);
     expect(prefs.followedTypes, TransportType.values.toSet());

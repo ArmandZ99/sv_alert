@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:travelalerts/domain/service_filter.dart';
-import 'package:travelalerts/domain/transport_type.dart';
+import 'package:travelalerts/features/arrivals/domain/service_filter.dart';
+import 'package:travelalerts/features/transport/domain/transport_type.dart';
 
 import '../support.dart';
 
