@@ -1,12 +1,22 @@
+import '../time/bucharest_time.dart';
+
 String _two(int value) => value.toString().padLeft(2, '0');
 
-String formatTime(DateTime time) => '${_two(time.hour)}:${_two(time.minute)}';
+/// Wall-clock time of an instant in Europe/Bucharest.
+String formatTime(DateTime instant) {
+  final local = BucharestTime.of(instant);
+  return '${_two(local.hour)}:${_two(local.minute)}';
+}
 
-String formatDate(DateTime time) =>
-    '${_two(time.day)}.${_two(time.month)}.${time.year}';
+/// A calendar date (such as a service date): only year, month and day are read.
+String formatDate(DateTime date) =>
+    '${_two(date.day)}.${_two(date.month)}.${date.year}';
 
-String formatDateTime(DateTime time) =>
-    '${formatDate(time)} ${formatTime(time)}';
+/// Date and wall-clock time of an instant in Europe/Bucharest.
+String formatDateTime(DateTime instant) {
+  final local = BucharestTime.of(instant);
+  return '${formatDate(local)} ${formatTime(instant)}';
+}
 
 String formatMinuteOfDay(int minutes) =>
     '${_two(minutes ~/ 60)}:${_two(minutes % 60)}';

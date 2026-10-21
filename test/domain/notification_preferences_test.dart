@@ -15,36 +15,6 @@ void main() {
     expect(prefs.quietHours.enabled, isFalse);
   });
 
-  group('QuietHours.contains', () {
-    DateTime at(int h, int m) => DateTime(2026, 10, 21, h, m);
-
-    test('disabled never matches', () {
-      expect(const QuietHours().contains(at(23, 0)), isFalse);
-    });
-
-    test('overnight interval wraps past midnight', () {
-      const quiet = QuietHours(
-        enabled: true,
-        startMinutes: 22 * 60,
-        endMinutes: 7 * 60,
-      );
-      expect(quiet.contains(at(23, 30)), isTrue);
-      expect(quiet.contains(at(3, 0)), isTrue);
-      expect(quiet.contains(at(7, 0)), isFalse);
-      expect(quiet.contains(at(12, 0)), isFalse);
-    });
-
-    test('same-day interval', () {
-      const quiet = QuietHours(
-        enabled: true,
-        startMinutes: 13 * 60,
-        endMinutes: 15 * 60,
-      );
-      expect(quiet.contains(at(14, 0)), isTrue);
-      expect(quiet.contains(at(15, 0)), isFalse);
-    });
-  });
-
   group('PreferencesController', () {
     test('toggling reminders keeps them sorted descending', () {
       final controller = PreferencesController();

@@ -1,6 +1,18 @@
+import '../../../core/time/bucharest_time.dart';
 import '../../transport/domain/transport_type.dart';
 
-/// Hours in which notifications should be silenced. May span midnight.
+/// Hours in which notifications should be silenced, in Europe/Bucharest wall
+/// clock time. May span midnight (for example 22:00-07:00).
+///
+/// * The start is inclusive and the end is exclusive.
+/// * If start is after end the period crosses midnight.
+/// * If start equals end the period is empty: nothing is ever quiet. (It is
+///   not read as "all day"; to silence everything, turn notifications off.)
+/// * Disabled quiet hours never match.
+///
+/// Membership is decided on the Bucharest wall clock, so on daylight-saving
+/// change days the period still runs from the clock's start to its end, which
+/// makes it one hour shorter or longer in real time.
 class QuietHours {
   const QuietHours({
     this.enabled = false,
@@ -14,9 +26,10 @@ class QuietHours {
   final int startMinutes;
   final int endMinutes;
 
-  bool contains(DateTime time) {
+  /// Whether the absolute [instant] falls inside the quiet period.
+  bool contains(DateTime instant) {
     if (!enabled || startMinutes == endMinutes) return false;
-    final minute = time.hour * 60 + time.minute;
+    final minute = BucharestTime.minuteOfDay(instant);
     if (startMinutes < endMinutes) {
       return minute >= startMinutes && minute < endMinutes;
     }

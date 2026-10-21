@@ -1,4 +1,5 @@
 import '../../../core/clock.dart';
+import '../../../core/time/bucharest_time.dart';
 import '../domain/arrival_status.dart';
 import '../domain/transport_service.dart';
 import '../domain/transport_type.dart';
@@ -34,9 +35,16 @@ class MockTransportRepository implements TransportRepository {
 
   /// Exposed for tests. Offsets are minutes from [now].
   static List<TransportService> buildServices(DateTime now) {
-    final base = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final utc = now.toUtc();
+    final base = DateTime.utc(
+      utc.year,
+      utc.month,
+      utc.day,
+      utc.hour,
+      utc.minute,
+    );
     DateTime at(int minutes) => base.add(Duration(minutes: minutes));
-    final serviceDate = DateTime(now.year, now.month, now.day);
+    final serviceDate = BucharestTime.serviceDateOf(base);
 
     TransportService make({
       required String id,
@@ -64,7 +72,7 @@ class MockTransportRepository implements TransportRepository {
       actualArrival: actual == null ? null : at(actual),
       isCancelled: cancelled,
       dataQuality: quality,
-      lastUpdated: now,
+      lastUpdated: utc,
     );
 
     return [

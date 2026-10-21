@@ -1,12 +1,16 @@
+import 'package:travelalerts/core/time/bucharest_time.dart';
 import 'package:travelalerts/features/transport/data/transport_repository.dart';
 import 'package:travelalerts/features/transport/domain/arrival_status.dart';
 import 'package:travelalerts/features/transport/domain/transport_service.dart';
 import 'package:travelalerts/features/transport/domain/transport_type.dart';
 
-final DateTime testNow = DateTime(2026, 10, 21, 12, 0);
+/// 12:00 in Bucharest (EEST, UTC+3) on 2026-10-21.
+final DateTime testNow = DateTime.utc(2026, 10, 21, 9, 0);
 
 DateTime minutesFrom(int minutes) => testNow.add(Duration(minutes: minutes));
 
+/// Builds a service whose times are minute offsets from [base] (default
+/// [testNow]), which is also when it was last updated.
 TransportService makeService({
   String id = 's1',
   TransportType type = TransportType.train,
@@ -20,7 +24,10 @@ TransportService makeService({
   bool cancelled = false,
   bool mock = false,
   DataQuality quality = DataQuality.estimated,
+  DateTime? base,
 }) {
+  final origin = base ?? testNow;
+  DateTime at(int minutes) => origin.add(Duration(minutes: minutes));
   return TransportService(
     id: id,
     type: type,
@@ -29,13 +36,13 @@ TransportService makeService({
     operatorName: operatorName,
     routeStops: stops,
     arrivalPoint: arrivalPoint,
-    serviceDate: DateTime(testNow.year, testNow.month, testNow.day),
-    scheduledArrival: minutesFrom(scheduled),
-    estimatedArrival: estimated == null ? null : minutesFrom(estimated),
-    actualArrival: actual == null ? null : minutesFrom(actual),
+    serviceDate: BucharestTime.serviceDateOf(origin),
+    scheduledArrival: at(scheduled),
+    estimatedArrival: estimated == null ? null : at(estimated),
+    actualArrival: actual == null ? null : at(actual),
     isCancelled: cancelled,
     dataQuality: quality,
-    lastUpdated: testNow,
+    lastUpdated: origin,
   );
 }
 

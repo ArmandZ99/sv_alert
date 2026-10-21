@@ -44,7 +44,10 @@ void main() {
       // Looser thresholds are recorded so they never fire later.
       expect(
         result.keysToRecord,
-        containsAll(['s1|arrivalReminder|15', 's1|arrivalReminder|30']),
+        containsAll([
+          's1|2026-10-21|arrivalReminder|15',
+          's1|2026-10-21|arrivalReminder|30',
+        ]),
       );
     });
 
@@ -211,8 +214,8 @@ void main() {
     test('keys are stable and unique per service, kind and threshold', () {
       final result = run([makeService(scheduled: 10, estimated: 30)]);
       expect(result.events.map((e) => e.key), [
-        's1|arrivalReminder|30',
-        's1|significantDelay|15',
+        's1|2026-10-21|arrivalReminder|30',
+        's1|2026-10-21|significantDelay|15',
       ]);
     });
   });
