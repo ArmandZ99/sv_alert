@@ -3,19 +3,46 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../theme/app_theme.dart';
 
+/// Spinner with a message. When [slow] is set (the first load has taken long)
+/// it adds the likely cause: a hosted server waking from idle. No progress
+/// figure or countdown is shown, because the wait cannot be predicted.
 class LoadingView extends StatelessWidget {
-  const LoadingView({super.key});
+  const LoadingView({this.slow = false, super.key});
+
+  final bool slow;
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text(Strings.loading, style: TextStyle(color: AppColors.muted)),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          const Text(
+            Strings.loading,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.muted),
+          ),
+          if (slow) ...[
+            const SizedBox(height: 12),
+            const Text(
+              Strings.loadingSlow,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.muted, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              Strings.loadingSlowNote,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ],
         ],
       ),
     );

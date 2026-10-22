@@ -81,6 +81,7 @@ class TransportPipeline {
 
   Future<void> _load(SourceAdapter adapter, _State state) async {
     final now = _now();
+    fetcher.clearResponseLog();
     try {
       final load = await adapter.load(fetcher, now);
       state.load = load;
@@ -91,8 +92,12 @@ class TransportPipeline {
       state.nextAttempt =
           now.add(e.blocked ? retryAfterBlock : retryAfterFailure);
     } on FormatException catch (e) {
+      // Say what was received: a changed layout and an error or bot-check page
+      // served to this server look the same to the parser, not to a person.
+      final received = fetcher.describeResponses();
       state.error =
-          'Structura sursei s-a schimbat (${e.message}). Date ignorate.';
+          'Conținutul sursei nu a putut fi interpretat (${e.message}). Date '
+          'ignorate.${received.isEmpty ? '' : ' Primit: $received.'}';
       state.nextAttempt = now.add(retryAfterFailure);
       // A structure we no longer understand is not trusted, even if an older
       // parse exists.

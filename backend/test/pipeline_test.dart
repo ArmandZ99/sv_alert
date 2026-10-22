@@ -195,7 +195,7 @@ void main() {
     await env.pipeline.ensureFresh();
     expect(env.snapshot().services, isEmpty);
     expect(env.status('a').connection, SourceConnection.unavailable);
-    expect(env.status('a').message, contains('Structura sursei s-a schimbat'));
+    expect(env.status('a').message, contains('nu a putut fi interpretat'));
   });
 
   test(

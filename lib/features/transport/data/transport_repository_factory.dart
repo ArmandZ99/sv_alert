@@ -6,25 +6,19 @@ import 'remote_transport_repository.dart';
 import 'sources/provider_config.dart';
 import 'transport_repository.dart';
 
-/// Picks the data source from build-time configuration.
+/// Picks the data source from the central configuration (`AppConfig`).
 ///
-/// * No backend URL: demo data only, every service marked as such.
-/// * A valid backend URL: real data from the backend, with the demo data as an
-///   explicit fallback when the backend cannot be reached.
+/// * No usable backend URL (empty override, invalid, or still the placeholder):
+///   demo data only, every service marked as such.
+/// * A valid backend URL: real data from the backend only. When it cannot be
+///   reached or read the app shows an error with a retry action; it never
+///   swaps in demo data silently.
 TransportRepository createTransportRepository(
   ProviderConfig config, {
   Clock clock = systemClock,
   http.Client? client,
 }) {
-  final mock = MockTransportRepository(clock: clock);
   final base = config.apiBaseUrl;
-  if (base == null) return mock;
-  return FallbackTransportRepository(
-    primary: RemoteTransportRepository(
-      baseUrl: base,
-      client: client,
-      now: clock,
-    ),
-    fallback: mock,
-  );
+  if (base == null) return MockTransportRepository(clock: clock);
+  return RemoteTransportRepository(baseUrl: base, client: client, now: clock);
 }

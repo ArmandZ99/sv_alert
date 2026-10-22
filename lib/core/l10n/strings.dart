@@ -23,7 +23,6 @@ abstract final class Strings {
       'Orele sunt cele din orarele publicate de operatori. Întârzierile, '
       'anulările și estimările nu sunt disponibile; o cursă poate sosi mai '
       'devreme sau mai târziu.';
-  static const degradedTitle = 'Date reale indisponibile';
   static const sampleSuffix = 'exemplu';
   static const independentNotice =
       'Aplicație comunitară independentă. Nu este dezvoltată, susținută sau '
@@ -91,7 +90,13 @@ abstract final class Strings {
   static const dataUnknown = 'Calitate necunoscută';
 
   // States
-  static const loading = 'Se încarcă sosirile…';
+  static const loading = 'Se conectează la server și se încarcă sosirile...';
+  static const loadingSlow =
+      'Serverul poate fi în repaus după o perioadă de inactivitate. Îl '
+      'repornim acum. Prima conectare poate dura aproximativ un minut. Te '
+      'rugăm să aștepți.';
+  static const loadingSlowNote =
+      'Poți lăsa aplicația deschisă cât timp se face conectarea.';
   static const errorTitle = 'Nu am putut încărca sosirile';
   static const offlineTitle = 'Fără conexiune la internet';
   static const unexpectedError =
@@ -99,6 +104,11 @@ abstract final class Strings {
   static const retry = 'Reîncearcă';
   static const emptyTitle = 'Nicio sosire în perioada următoare';
   static const emptyBody = 'Trage în jos pentru a actualiza lista.';
+  static const noSourcesTitle = 'Sursele de date nu sunt disponibile acum';
+  static const noSourcesBody =
+      'Serverul funcționează, dar nu a putut citi niciun orar. Lista goală nu '
+      'înseamnă că nu sosește nimic. Detalii găsești în Setări, la Surse de '
+      'date.';
   static const noResultsTitle = 'Nicio cursă nu corespunde filtrelor';
   static const clearFilters = 'Șterge filtrele';
   static const staleTitle = 'Datele par vechi';

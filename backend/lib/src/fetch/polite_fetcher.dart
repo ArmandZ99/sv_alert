@@ -23,6 +23,61 @@ class FetchException implements Exception {
   String toString() => message;
 }
 
+/// What one HTTP answer looked like, kept so a source that cannot be read can
+/// say what it actually received (an error page, a bot-check page, a redirect
+/// to a consent page...) instead of only "structure changed".
+class ResponseInfo {
+  const ResponseInfo({
+    required this.url,
+    required this.status,
+    required this.contentType,
+    required this.bytes,
+    this.title,
+  });
+
+  /// Host and path only: no query string, which could carry a token.
+  final String url;
+  final int status;
+  final String? contentType;
+  final int bytes;
+
+  /// The HTML `<title>`, shortened, when there is one.
+  final String? title;
+
+  factory ResponseInfo.of(Uri url, http.Response response) {
+    final type = response.headers['content-type'];
+    String? title;
+    if (type == null || type.contains('html')) {
+      final head = utf8.decode(
+        response.bodyBytes.length > 8192
+            ? response.bodyBytes.sublist(0, 8192)
+            : response.bodyBytes,
+        allowMalformed: true,
+      );
+      final match = RegExp(
+        r'<title[^>]*>([^<]{1,200})',
+        caseSensitive: false,
+      ).firstMatch(head);
+      final text = match?.group(1)?.replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (text != null && text.isNotEmpty) {
+        title = text.length > 80 ? '${text.substring(0, 80)}...' : text;
+      }
+    }
+    return ResponseInfo(
+      url: '${url.host}${url.path}',
+      status: response.statusCode,
+      contentType: type?.split(';').first.trim(),
+      bytes: response.bodyBytes.length,
+      title: title,
+    );
+  }
+
+  @override
+  String toString() =>
+      '$url: HTTP $status, ${contentType ?? 'tip necunoscut'}, $bytes octeți'
+      '${title == null ? '' : ', titlu "$title"'}';
+}
+
 class FetchResult {
   const FetchResult({
     required this.bytes,
@@ -82,6 +137,14 @@ class PoliteFetcher {
   final Map<String, DateTime> _backoffUntil = {};
   final Map<Uri, _Cached> _cache = {};
 
+  /// The answers received since the last [clearResponseLog], for diagnostics.
+  final List<ResponseInfo> responseLog = [];
+
+  void clearResponseLog() => responseLog.clear();
+
+  /// One line per recent answer, or an empty string when none was received.
+  String describeResponses() => responseLog.map((r) => r.toString()).join('; ');
+
   Future<FetchResult> get(Uri url, {Duration? maxAge}) async {
     final age = maxAge ?? ttl;
     final cached = _cache[url];
@@ -101,6 +164,13 @@ class PoliteFetcher {
 
     final rules = await _rulesFor(url);
     final path = url.hasQuery ? '${url.path}?${url.query}' : url.path;
+    if (rules.unreadable != null) {
+      throw FetchException(
+        'robots.txt nu a putut fi citit (${rules.unreadable}); prin precauție '
+        'sursa nu este accesată.',
+        blocked: true,
+      );
+    }
     if (!rules.rules.isAllowed(path.isEmpty ? '/' : path)) {
       throw const FetchException(
         'robots.txt nu permite accesul automat la această adresă.',
@@ -120,6 +190,7 @@ class PoliteFetcher {
 
     final response = await _send(url, headers);
     _lastRequest[host] = _now();
+    responseLog.add(ResponseInfo.of(url, response));
 
     if (response.statusCode == 304 && cached != null) {
       cached.checkedAt = _now();
@@ -186,6 +257,7 @@ class PoliteFetcher {
     }
     final robotsUrl = Uri.parse('$origin/robots.txt');
     RobotsRules rules;
+    String? unreadable;
     try {
       await _throttle(url.host, null);
       final response = await _send(robotsUrl, {'user-agent': userAgent});
@@ -200,11 +272,13 @@ class PoliteFetcher {
         );
       } else {
         rules = RobotsRules.disallowAll();
+        unreadable = 'HTTP $code';
       }
-    } on FetchException {
+    } on FetchException catch (e) {
       rules = RobotsRules.disallowAll();
+      unreadable = e.message;
     }
-    return _robots[origin] = _Robots(rules, _now());
+    return _robots[origin] = _Robots(rules, _now(), unreadable: unreadable);
   }
 
   Future<void> _throttle(String host, Duration? crawlDelay) async {
@@ -228,10 +302,13 @@ class PoliteFetcher {
 }
 
 class _Robots {
-  _Robots(this.rules, this.fetchedAt);
+  _Robots(this.rules, this.fetchedAt, {this.unreadable});
 
   final RobotsRules rules;
   final DateTime fetchedAt;
+
+  /// Why robots.txt could not be read (then nothing is fetched), or null.
+  final String? unreadable;
 }
 
 class _Cached {

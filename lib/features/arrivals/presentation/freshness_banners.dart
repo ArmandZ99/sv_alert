@@ -44,14 +44,6 @@ class FreshnessBanners extends StatelessWidget {
               ),
             ],
           ),
-        if (controller.degradedReason != null) ...[
-          const SizedBox(height: 10),
-          NoticeBanner(
-            title: Strings.degradedTitle,
-            body: controller.degradedReason!,
-            icon: Icons.cloud_off_outlined,
-          ),
-        ],
         if (controller.hasMock) ...[
           const SizedBox(height: 10),
           controller.hasReal

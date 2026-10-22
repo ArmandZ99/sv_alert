@@ -35,4 +35,9 @@ class SourceStatusInfo {
 
   /// When the backend last fetched the source.
   final DateTime? fetchedAt;
+
+  /// Whether this source can contribute services at all right now.
+  bool get providesData =>
+      connection == SourceConnection.connected ||
+      connection == SourceConnection.scheduledOnly;
 }

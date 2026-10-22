@@ -86,6 +86,48 @@ void main() {
     expect(h.paths, ['/robots.txt']);
   });
 
+  test('says whether robots.txt forbids the path or could not be read',
+      () async {
+    final forbids = Harness({
+      '/robots.txt': (_) => ok('User-agent: *\nDisallow: /orar'),
+    });
+    await expectLater(
+      forbids.fetcher.get(page),
+      throwsA(isA<FetchException>()
+          .having((e) => e.message, 'message', contains('nu permite'))),
+    );
+
+    final unreadable = Harness({
+      '/robots.txt': (_) => http.Response('blocked', 403),
+    });
+    await expectLater(
+      unreadable.fetcher.get(page),
+      throwsA(isA<FetchException>().having(
+        (e) => e.message,
+        'message',
+        allOf(contains('nu a putut fi citit'), contains('HTTP 403')),
+      )),
+    );
+  });
+
+  test('keeps a short description of each answer, without the query', () async {
+    final h = Harness({
+      '/orar': (_) => ok(
+            '<html><head><title>  Just a\n moment...  </title></head></html>',
+            headers: {'content-type': 'text/html; charset=utf-8'},
+          ),
+    });
+    await h.fetcher.get(Uri.parse('https://example.org/orar?token=SECRET'));
+    final text = h.fetcher.describeResponses();
+    expect(text, contains('example.org/orar'));
+    expect(text, contains('HTTP 200'));
+    expect(text, contains('text/html'));
+    expect(text, contains('titlu "Just a moment..."'));
+    expect(text, isNot(contains('SECRET')));
+    h.fetcher.clearResponseLog();
+    expect(h.fetcher.describeResponses(), isEmpty);
+  });
+
   test('robots.txt is fetched once per host and reused', () async {
     final h = Harness({
       '/robots.txt': (_) => ok('User-agent: *\nDisallow:'),

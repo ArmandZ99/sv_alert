@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/clock.dart';
@@ -19,9 +21,14 @@ class ArrivalsController extends ChangeNotifier {
     this.clock = systemClock,
     this.staleAfter = const Duration(minutes: 10),
     this.scheduledStaleAfter = const Duration(hours: 36),
+    this.slowAfter = const Duration(seconds: 9),
   });
 
   final TransportRepository repository;
+
+  /// How long the first load may take before the loading view explains that the
+  /// server could be waking up.
+  final Duration slowAfter;
   final Clock clock;
 
   /// Live or estimated data older than this is flagged as stale.
@@ -36,6 +43,8 @@ class ArrivalsController extends ChangeNotifier {
   TransportFetchException? _error;
   ServiceFilter _filter = const ServiceFilter();
   bool _refreshing = false;
+  bool _slowLoad = false;
+  Timer? _slowTimer;
   bool _disposed = false;
 
   LoadStatus get status => _status;
@@ -65,8 +74,15 @@ class ArrivalsController extends ChangeNotifier {
   /// Per-source status from the backend (empty for demo data).
   List<SourceStatusInfo> get sources => _snapshot?.sources ?? const [];
 
-  /// Set when real data failed to load and demo data is shown instead.
-  String? get degradedReason => _snapshot?.degradedReason;
+  /// True when the server reported sources but none of them can supply data
+  /// (all failed or unusable): an empty list then means "no data", not "no
+  /// arrivals".
+  bool get noSourceAvailable =>
+      sources.isNotEmpty && sources.every((s) => !s.providesData);
+
+  /// True when the first load is still pending after [slowAfter]: the hosted
+  /// server may be waking up. Never true once data or an error has arrived.
+  bool get isSlowLoad => _slowLoad;
 
   Duration? get dataAge =>
       _snapshot == null ? null : now.difference(_snapshot!.fetchedAt);
@@ -118,11 +134,18 @@ class ArrivalsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Starts a refresh unless one is already running (so pull-to-refresh and
+  /// the retry button cannot stack requests).
   Future<void> refresh() async {
     if (_refreshing) return;
     _refreshing = true;
     if (_snapshot == null) {
       _status = LoadStatus.loading;
+      _slowLoad = false;
+      _slowTimer = Timer(slowAfter, () {
+        _slowLoad = true;
+        _notify();
+      });
       _notify();
     }
     try {
@@ -137,6 +160,9 @@ class ArrivalsController extends ChangeNotifier {
       if (_snapshot == null) _status = LoadStatus.error;
     } finally {
       _refreshing = false;
+      _slowTimer?.cancel();
+      _slowTimer = null;
+      _slowLoad = false;
       _notify();
     }
   }
@@ -148,6 +174,7 @@ class ArrivalsController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _slowTimer?.cancel();
     super.dispose();
   }
 }

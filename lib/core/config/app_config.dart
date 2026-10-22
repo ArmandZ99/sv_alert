@@ -13,13 +13,9 @@ class AppConfig {
   /// Name of the optional build-time override.
   static const String apiBaseUrlKey = 'TRAVEL_ALERTS_API_BASE_URL';
 
-  /// Public URL of the hosted backend. Replace the placeholder with the address
-  /// Render shows for the web service after a successful deploy.
+  /// Public URL of the hosted backend (Render Free web service).
   static const String defaultApiBaseUrl =
-      'https://REPLACE_AFTER_RENDER_DEPLOY.onrender.com';
-
-  /// Marker that [defaultApiBaseUrl] still has to be replaced.
-  static const String placeholderMarker = 'REPLACE_AFTER_RENDER_DEPLOY';
+      'https://suceava-travel-alerts-api.onrender.com';
 
   /// The configured URL: the override when given, else [defaultApiBaseUrl].
   /// Compile-time constant lookup, so the key is spelled out literally.
@@ -27,7 +23,4 @@ class AppConfig {
     'TRAVEL_ALERTS_API_BASE_URL',
     defaultValue: defaultApiBaseUrl,
   );
-
-  /// True while [url] is still the unreplaced placeholder.
-  static bool isPlaceholder(String url) => url.contains(placeholderMarker);
 }

@@ -142,14 +142,13 @@ void main() {
     expect((c.hasReal, c.hasMock, c.isMock), (true, true, false));
   });
 
-  test('source status and a fallback reason come from the snapshot', () async {
+  test('source status comes from the snapshot', () async {
     final controller = build(
       FakeRepository([
         TransportSnapshot(
           services: [makeService(mock: true)],
           fetchedAt: testNow,
           isMock: true,
-          degradedReason: 'Datele reale nu au putut fi încărcate.',
           sources: const [
             SourceStatusInfo(
               id: 'a',
@@ -162,7 +161,6 @@ void main() {
       ]),
     );
     await controller.refresh();
-    expect(controller.degradedReason, contains('nu au putut'));
     expect(
       controller.sources.single.connection,
       SourceConnection.scheduledOnly,
