@@ -33,6 +33,8 @@ class ResponseInfo {
     required this.contentType,
     required this.bytes,
     this.title,
+    this.server,
+    this.excerpt,
   });
 
   /// Host and path only: no query string, which could carry a token.
@@ -44,9 +46,18 @@ class ResponseInfo {
   /// The HTML `<title>`, shortened, when there is one.
   final String? title;
 
+  /// The `Server` response header, which often names a protection layer.
+  final String? server;
+
+  /// The start of the visible page text (scripts, styles and tags removed),
+  /// enough to recognise a bot-check or error page. Never more than 160
+  /// characters.
+  final String? excerpt;
+
   factory ResponseInfo.of(Uri url, http.Response response) {
     final type = response.headers['content-type'];
     String? title;
+    String? excerpt;
     if (type == null || type.contains('html')) {
       final head = utf8.decode(
         response.bodyBytes.length > 8192
@@ -54,6 +65,28 @@ class ResponseInfo {
             : response.bodyBytes,
         allowMalformed: true,
       );
+      final visible = utf8
+          .decode(
+            response.bodyBytes.length > 65536
+                ? response.bodyBytes.sublist(0, 65536)
+                : response.bodyBytes,
+            allowMalformed: true,
+          )
+          .replaceAll(
+            RegExp(
+              r'<(script|style|head)\b[^>]*>.*?</\1>',
+              caseSensitive: false,
+              dotAll: true,
+            ),
+            ' ',
+          )
+          .replaceAll(RegExp(r'<[^>]*>'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      if (visible.isNotEmpty) {
+        excerpt =
+            visible.length > 160 ? '${visible.substring(0, 160)}...' : visible;
+      }
       final match = RegExp(
         r'<title[^>]*>([^<]{1,200})',
         caseSensitive: false,
@@ -69,13 +102,17 @@ class ResponseInfo {
       contentType: type?.split(';').first.trim(),
       bytes: response.bodyBytes.length,
       title: title,
+      server: response.headers['server'],
+      excerpt: excerpt,
     );
   }
 
   @override
   String toString() =>
       '$url: HTTP $status, ${contentType ?? 'tip necunoscut'}, $bytes octeți'
-      '${title == null ? '' : ', titlu "$title"'}';
+      '${title == null ? '' : ', titlu "$title"'}'
+      '${server == null ? '' : ', server $server'}'
+      '${excerpt == null ? '' : ', text "$excerpt"'}';
 }
 
 class FetchResult {
@@ -165,10 +202,11 @@ class PoliteFetcher {
     final rules = await _rulesFor(url);
     final path = url.hasQuery ? '${url.path}?${url.query}' : url.path;
     if (rules.unreadable != null) {
+      // Not a refusal: the policy simply could not be checked this time. The
+      // source stays untouched, and the check is repeated soon.
       throw FetchException(
         'robots.txt nu a putut fi citit (${rules.unreadable}); prin precauție '
-        'sursa nu este accesată.',
-        blocked: true,
+        'sursa nu este accesată, se reîncearcă mai târziu.',
       );
     }
     if (!rules.rules.isAllowed(path.isEmpty ? '/' : path)) {
@@ -252,7 +290,10 @@ class PoliteFetcher {
     final origin = '${url.scheme}://${url.authority}';
     final cached = _robots[origin];
     if (cached != null &&
-        _now().difference(cached.fetchedAt) < const Duration(hours: 24)) {
+        _now().difference(cached.fetchedAt) <
+            (cached.unreadable == null
+                ? const Duration(hours: 24)
+                : const Duration(minutes: 10))) {
       return cached;
     }
     final robotsUrl = Uri.parse('$origin/robots.txt');

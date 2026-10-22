@@ -14,7 +14,12 @@ Future<void> main() async {
     return;
   }
 
-  final fetcher = PoliteFetcher(userAgent: config.userAgent);
+  final fetcher = PoliteFetcher(
+    userAgent: config.userAgent,
+    // The train files are about 12 MB each and a free host's route to the
+    // source can be slow.
+    timeout: const Duration(seconds: 60),
+  );
   final pipeline = TransportPipeline(
     adapters: config.buildAdapters(),
     fetcher: fetcher,

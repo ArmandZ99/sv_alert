@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:xml/xml.dart';
 import 'package:xml/xml_events.dart';
 
@@ -12,6 +15,7 @@ class RailDataset {
     required this.url,
     required this.operatorName,
     required this.pageUrl,
+    this.bundledPath,
   });
 
   /// Direct download URL of the XML file.
@@ -20,6 +24,12 @@ class RailDataset {
 
   /// Human page of the dataset, shown as the service's source link.
   final String pageUrl;
+
+  /// A copy of the file shipped with the service (`.xml` or `.xml.gz`). When
+  /// it exists it is used instead of downloading [url]: data.gov.ro can be
+  /// slow or unreachable from a hosted server, and the open licence allows
+  /// redistribution. Null means always download.
+  final String? bundledPath;
 }
 
 class ParsedRailTimetable {
@@ -91,15 +101,29 @@ class RailTimetableAdapter extends SourceAdapter {
     DateTime? fetchedAt;
     final failures = <String>[];
     var skipped = 0;
+    var usedBundled = false;
 
     for (final dataset in datasets) {
       try {
-        final result = await fetcher.get(
-          dataset.url,
-          maxAge: const Duration(hours: 24),
-        );
+        final bundled = dataset.bundledPath == null
+            ? null
+            : await readBundled(dataset.bundledPath!);
+        final String text;
+        final DateTime loadedAt;
+        if (bundled != null) {
+          text = bundled;
+          loadedAt = now;
+          usedBundled = true;
+        } else {
+          final result = await fetcher.get(
+            dataset.url,
+            maxAge: const Duration(hours: 24),
+          );
+          text = result.text;
+          loadedAt = result.fetchedAt;
+        }
         final parsed = await parse(
-          result.text,
+          text,
           operatorName: dataset.operatorName,
           sourceUrl: dataset.pageUrl,
         );
@@ -108,7 +132,7 @@ class RailTimetableAdapter extends SourceAdapter {
         from = _min(from, parsed.validFrom);
         to = _max(to, parsed.validTo);
         exported = _max(exported, parsed.exportDate);
-        fetchedAt = _min(fetchedAt, result.fetchedAt);
+        fetchedAt = _min(fetchedAt, loadedAt);
       } on FetchException catch (e) {
         failures.add('${dataset.operatorName}: ${e.message}');
       } on FormatException catch (e) {
@@ -128,6 +152,10 @@ class RailTimetableAdapter extends SourceAdapter {
     final expired = to != null && to.isBefore(today);
     final notes = <String>[
       'Orar anual programat (date deschise OGL-ROU-1.0), fără întârzieri.',
+      if (usedBundled)
+        'Fișierele de orar sunt incluse în serviciu (export din '
+            '${_date(exported)}), nu descărcate la fiecare pornire; se '
+            'înlocuiesc la publicarea orarului nou.',
       if (failures.isNotEmpty) 'Fișiere indisponibile: ${failures.join(' ')}',
       if (skipped > 0)
         '$skipped intrări de calendar nerecunoscute au fost omise.',
@@ -147,6 +175,28 @@ class RailTimetableAdapter extends SourceAdapter {
       validTo: to,
     );
   }
+
+  /// The text of a bundled file, or null when there is none. Reads plain XML
+  /// or gzip (chosen by the `.gz` ending). A file that exists but cannot be
+  /// decoded is a [FormatException], not a silent fall-back to the network.
+  static Future<String?> readBundled(String path) async {
+    final file = File(path);
+    if (!await file.exists()) return null;
+    try {
+      final bytes = await file.readAsBytes();
+      final raw = path.endsWith('.gz') ? gzip.decode(bytes) : bytes;
+      return utf8.decode(raw, allowMalformed: true);
+    } on FileSystemException {
+      return null;
+    } on FormatException {
+      throw FormatException('Fișierul de orar inclus nu poate fi citit: $path');
+    }
+  }
+
+  static String _date(DateTime? d) => d == null
+      ? '?'
+      : '${d.day.toString().padLeft(2, '0')}.'
+          '${d.month.toString().padLeft(2, '0')}.${d.year}';
 
   /// Streams through the XML one train at a time so the 12 MB file never
   /// becomes a full document in memory. Throws [FormatException] when the

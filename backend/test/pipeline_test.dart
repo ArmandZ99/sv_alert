@@ -54,6 +54,24 @@ AdapterLoad goodLoad({
       ],
     );
 
+/// Fetches a page, then fails to find anything in it, like a real adapter that
+/// is served an unexpected page.
+class _FetchingAdapter extends SourceAdapter {
+  @override
+  final descriptor = const SourceDescriptor(
+    id: 'page',
+    name: 'Page',
+    kind: TransportKind.coach,
+    url: 'https://example.org/page',
+  );
+
+  @override
+  Future<AdapterLoad> load(PoliteFetcher fetcher, DateTime now) async {
+    await fetcher.get(Uri.parse('https://example.org/page'));
+    throw const FormatException('Nu s-au găsit trasee pe pagină.');
+  }
+}
+
 class Env {
   Env(this.adapters, {Duration refreshEvery = const Duration(hours: 6)}) {
     fetcher = PoliteFetcher(
@@ -266,6 +284,91 @@ void main() {
       expect(s.sourceUrl, startsWith('https://'));
       expect(s.dataQuality, DataQuality.scheduled);
     }
+  });
+
+  group('source availability states', () {
+    test('some failing, some working: only real services, honest statuses',
+        () async {
+      final env = Env([
+        FakeAdapter('ok', TransportKind.train, [goodLoad()]),
+        FakeAdapter('parse', TransportKind.flight,
+            [const FormatException('Nu s-au găsit tabele.')]),
+        FakeAdapter('slow', TransportKind.coach,
+            [const FetchException('Sursa nu a răspuns la timp.')]),
+      ]);
+      await env.pipeline.ensureFresh();
+      final snapshot = env.snapshot();
+      expect(snapshot.services.map((s) => s.sourceId), ['ok']);
+      expect(env.status('ok').connection, SourceConnection.scheduledOnly);
+      expect(env.status('ok').serviceCount, 1);
+      expect(env.status('parse').connection, SourceConnection.unavailable);
+      expect(
+          env.status('parse').message, contains('nu a putut fi interpretat'));
+      expect(env.status('slow').connection, SourceConnection.unavailable);
+    });
+
+    test('all sources failing: no services, every source says why, no mock',
+        () async {
+      final env = Env([
+        FakeAdapter('a', TransportKind.train,
+            [const FetchException('robots.txt nu a putut fi citit.')]),
+        FakeAdapter('b', TransportKind.flight,
+            [const FormatException('Perioada nu a fost găsită.')]),
+      ]);
+      await env.pipeline.ensureFresh();
+      final snapshot = env.snapshot();
+      expect(snapshot.services, isEmpty);
+      expect(snapshot.sources, hasLength(2));
+      expect(
+        snapshot.sources.every(
+          (s) => s.connection == SourceConnection.unavailable,
+        ),
+        isTrue,
+      );
+      expect(snapshot.sources.every((s) => s.message.isNotEmpty), isTrue);
+      final json = snapshot.toJson().toString();
+      expect(json, isNot(contains('isMock: true')));
+    });
+
+    test('sources that loaded but have nothing in the window stay available',
+        () async {
+      final env = Env([
+        FakeAdapter('ok', TransportKind.train, [goodLoad(minutes: 12 * 60)]),
+      ]);
+      await env.pipeline.ensureFresh();
+      final empty = env.pipeline.arrivals(
+        from: DateTime.utc(2026, 11, 5),
+        to: DateTime.utc(2026, 11, 5, 1),
+      );
+      expect(empty.services, isEmpty);
+      expect(empty.sources.single.connection, SourceConnection.scheduledOnly);
+    });
+
+    test('a FormatException after HTTP 200 reports what was received',
+        () async {
+      final fetcher = PoliteFetcher(
+        userAgent: 'test',
+        client: MockClient((request) async => request.url.path == '/robots.txt'
+            ? http.Response('', 404)
+            : http.Response('<html><body>Verificare browser</body></html>', 200,
+                headers: {'content-type': 'text/html'})),
+        sleep: (_) async {},
+      );
+      final adapter = _FetchingAdapter();
+      final pipeline = TransportPipeline(
+        adapters: [adapter],
+        fetcher: fetcher,
+        now: () => t0,
+      );
+      await pipeline.ensureFresh();
+      final status = pipeline
+          .arrivals(from: t0, to: t0.add(const Duration(hours: 1)))
+          .sources
+          .single;
+      expect(status.connection, SourceConnection.unavailable);
+      expect(status.message, contains('HTTP 200'));
+      expect(status.message, contains('Verificare browser'));
+    });
   });
 
   group('default adapter set', () {

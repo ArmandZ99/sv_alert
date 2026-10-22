@@ -128,6 +128,55 @@ void main() {
     expect(h.fetcher.describeResponses(), isEmpty);
   });
 
+  test('describes a bot-check style page by its visible text and server',
+      () async {
+    final h = Harness({
+      '/orar': (_) => ok(
+            '<html><head><title>Wait</title><style>p{}</style></head><body>'
+            '<script>var x=1;</script><p>Checking your browser before '
+            'accessing the site.</p></body></html>',
+            headers: {'content-type': 'text/html', 'server': 'LiteSpeed'},
+          ),
+    });
+    await h.fetcher.get(page);
+    final text = h.fetcher.describeResponses();
+    expect(text, contains('server LiteSpeed'));
+    expect(text, contains('text "Checking your browser before accessing'));
+    expect(text, isNot(contains('var x')));
+    expect(text, isNot(contains('p{}')));
+  });
+
+  test(
+    'an unreadable robots.txt is a transient failure, re-checked after minutes',
+    () async {
+      var robotsCalls = 0;
+      final h = Harness({
+        '/robots.txt': (_) {
+          robotsCalls++;
+          return robotsCalls == 1
+              ? http.Response('busy', 503)
+              : ok('User-agent: *\nDisallow:');
+        },
+        '/orar': (_) => ok('hello'),
+      });
+      await expectLater(
+        h.fetcher.get(page),
+        throwsA(
+          isA<FetchException>().having((e) => e.blocked, 'blocked', isFalse),
+        ),
+      );
+      // Within ten minutes the answer is reused; the page is still untouched.
+      h.clock = h.clock.add(const Duration(minutes: 5));
+      await expectLater(h.fetcher.get(page), throwsA(isA<FetchException>()));
+      expect(robotsCalls, 1);
+      expect(h.paths, ['/robots.txt']);
+
+      h.clock = h.clock.add(const Duration(minutes: 11));
+      expect((await h.fetcher.get(page)).text, 'hello');
+      expect(robotsCalls, 2);
+    },
+  );
+
   test('robots.txt is fetched once per host and reused', () async {
     final h = Harness({
       '/robots.txt': (_) => ok('User-agent: *\nDisallow:'),

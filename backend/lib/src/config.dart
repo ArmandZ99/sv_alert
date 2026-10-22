@@ -11,6 +11,21 @@ import 'server/handler.dart';
 /// the second Sunday of December to the second Saturday of December the
 /// following year. The URLs change with each yearly publication: update them
 /// every December (or override with the environment variables below).
+/// Where the yearly files shipped with the service live, relative to the
+/// working directory (`/app` in the container). See `data/rail/README.md`.
+const defaultRailDataDir = 'data/rail';
+
+List<RailDataset> railDatasetsFor(String dir) => [
+      for (final d in defaultRailDatasets)
+        RailDataset(
+          url: d.url,
+          operatorName: d.operatorName,
+          pageUrl: d.pageUrl,
+          bundledPath:
+              '$dir/${d.operatorName == 'CFR Călători' ? 'sntfc' : 'interregional'}.xml.gz',
+        ),
+    ];
+
 final defaultRailDatasets = [
   RailDataset(
     url: Uri.https(
@@ -46,7 +61,7 @@ class BackendConfig {
     this.pdfExtractor,
     this.corsAllowOrigin,
     List<RailDataset>? railDatasets,
-  }) : railDatasets = railDatasets ?? defaultRailDatasets;
+  }) : railDatasets = railDatasets ?? railDatasetsFor(defaultRailDataDir);
 
   /// Contact (email or URL) put in the User-Agent so site owners can reach the
   /// operator of this service. Required.
@@ -96,9 +111,19 @@ class BackendConfig {
     List<RailDataset> datasets() {
       final sntfc = env['RAIL_SNTFC_URL']?.trim();
       final inter = env['RAIL_INTERREGIONAL_URL']?.trim();
+      final dirEnv = env['RAIL_DATA_DIR']?.trim();
+      final dir =
+          (dirEnv == null || dirEnv.isEmpty) ? defaultRailDataDir : dirEnv;
+      final bundled = railDatasetsFor(dir);
+      // An explicit URL override means "download this", so the bundled copy
+      // of that dataset is not used.
+      bool overridden(RailDataset d) => d.operatorName == 'CFR Călători'
+          ? sntfc != null && sntfc.isNotEmpty
+          : inter != null && inter.isNotEmpty;
       return [
-        for (final d in defaultRailDatasets)
+        for (final (i, d) in defaultRailDatasets.indexed)
           RailDataset(
+            bundledPath: overridden(d) ? null : bundled[i].bundledPath,
             url: Uri.parse(
               d.operatorName == 'CFR Călători' &&
                       sntfc != null &&

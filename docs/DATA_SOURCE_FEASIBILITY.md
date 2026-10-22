@@ -122,3 +122,13 @@ The alert engine is **not connected** to this data. It would never raise a delay
 3. **Rail files.** Say whether to also integrate other operators' yearly files (Regio Călători, Softrans and others on data.gov.ro): each needs a download approval from you, and the dataset URLs must be updated every December.
 4. **A host for the backend** (a small VM or container with HTTPS, with `pdftotext` installed) and a contact email for its User-Agent. Then build the app with `--dart-define=TRAVEL_ALERTS_API_BASE_URL=https://...`.
 5. **Live data, if wanted:** an AeroDataBox account (never put the key in chat or the repo) and a decision whether the app counts as commercial; a written agreement with CFR Călători / ARF for live train delays; written consent from BILETERIA SRL (Autogari.ro) or operator feeds for more coaches; an agreement with Tarsin.
+
+## Hosted deployment: sources fail on Render (2026-10-22)
+
+The same code, run on a Windows PC with the same User-Agent, reads all four public sources: airport 8, shuttle 6, TASA 5 and rail 78 services in the next 24 h (the airport status also lists the PDF season and 2 rejected PDF rows). On the Render Free service the airport, shuttle and TASA parsers found nothing, the TASA answer was 12,041 bytes against about 80 KB here, and the rail check could not read data.gov.ro's `robots.txt` in time. The parsers are not at fault: the pages they receive from Render are different. Changing the User-Agent made no difference from the PC, so the likely cause is the sites treating the host's datacenter address differently (a protection page, or a slow or refused connection). Bypassing that is not done.
+
+What the backend does now so the cause is visible: each failing source's message ends with `Primit:` and what was received (URL, HTTP status, content type, size, page title, `Server` header and the first 160 characters of visible text). A `robots.txt` that cannot be read is a transient failure re-checked after 10 minutes, and does not stop the source for hours.
+
+Options once the real response is known: ask the site owners to allow the server's address or to publish a feed; run the backend from an address they accept; or, for the rail files only (OGL-ROU-1.0, which allows redistribution), ship the yearly XML files with the service. None of these is done without your decision.
+
+**Update:** the rail files are now shipped with the service (`backend/data/rail/`, OGL-ROU-1.0, valid until 12.12.2026, see its README), so rail no longer depends on data.gov.ro from the host. The airport and TASA pages still need the host to be allowed by those sites. Replace the rail files every December.
