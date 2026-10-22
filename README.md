@@ -2,7 +2,7 @@
 
 Acesta este un starter de UI Flutter pentru o aplicație comunitară independentă, concentrată pe sosirile de avion, tren și autocar în Suceava și pe oportunități de cerere potențială în apropierea punctelor de transport.
 
-**Important:** toate cursele și orele din acest starter sunt demonstrative. Nu există încă integrare cu date de transport live, push notifications reale sau date interne Bolt.
+**Important:** fără serverul de date, aplicația afișează doar date demonstrative. Cu serverul configurat (adresa din `lib/core/config/app_config.dart`; opțional `--dart-define=TRAVEL_ALERTS_API_BASE_URL=https://...` pentru o rulare; valoare goală = doar demo) afișează **orare programate reale** (zboruri, trenuri, autocare), nu date în timp real: nu există întârzieri sau estimări. Nu există push notifications reale sau date interne Bolt.
 
 ## 1. Creează automat proiectul pe Windows
 
@@ -59,8 +59,13 @@ Cere-i să citească `claude_suceava_travel_alerts_prompt.md` și să continue i
 
 ## Structură inclusă în starter
 
-- `lib/main.dart` — dashboard, filtre pentru toate cele 3 transporturi, detalii de cursă, setări de praguri și indicatorul Demand Radar.
-- `test/widget_test.dart` — teste inițiale pentru dashboard și navigare.
+- `lib/app/`, `lib/core/` — inițializare, navigație, temă, texte în română.
+- `lib/features/` — `transport` (modele, surse), `arrivals` (listă, filtre, detalii), `dashboard` (panou, potențial de cerere), `settings` (preferințe persistente), `notifications` (logica deciziei de alertare, fără trimitere).
+- `test/` — teste unitare (domeniu, date, controller) și teste de widget (panou, filtre, stări, detalii, setări).
 - `claude_suceava_travel_alerts_prompt.md` — specificația completă pentru Claude Code.
 - `docs/ARCHITECTURE.md` — note despre arhitectură și limitele MVP-ului.
+- `backend/` — serviciul care preia și normalizează orarele publice (vezi `backend/README.md`).
+- `docs/LOCAL_TESTING.md` — cum rulezi gratuit serverul și aplicația pe Windows (PowerShell, Swagger, emulator, telefon).
+- `backend/openapi.yaml` — specificația OpenAPI a serverului.
+- `docs/DATA_SOURCE_FEASIBILITY.md` — ce surse de date reale există pentru zboruri, trenuri și autocare și ce lipsește pentru integrare.
 - `backend/README.md` și `infrastructure/README.md` — pași pentru fazele viitoare.

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: suceava-travel-alerts-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /healthz
+    envVars:
+      - key: TRAVEL_ALERTS_CONTACT
+        sync: false

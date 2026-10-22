@@ -1,0 +1,500 @@
+openapi: 3.0.3
+
+info:
+  title: Suceava Travel Alerts - ingestion backend
+  version: 1.0.0
+  description: |
+    Read-only JSON API that serves **scheduled** arrivals in Suceava (flights,
+    trains and coaches) together with the status of every data source.
+
+    **What this API is not.** There is **no live data**: every service is a
+    timetable entry. No service has an estimated or actual arrival time, a delay
+    or a cancellation, and no source is `connected` (live). Fields for those
+    exist in the contract and are documented below as always `null` / `false`
+    today. They are kept so the contract stays stable if a live provider is added
+    later.
+
+    **Behaviour worth knowing.**
+    * Requests never make the backend fetch from the sources on the spot. The
+      backend refreshes its sources on its own schedule (pages every 6 hours,
+      the large rail files every 24 hours). The **first request after the
+      backend starts waits for the initial load** (about 30 seconds, because the
+      backend waits between requests to the same website).
+    * Times are absolute instants in UTC (ISO 8601 with a `Z`). Business rules
+      such as "service date" use the Europe/Bucharest calendar.
+    * `from` and `to` must carry an explicit UTC offset. A `+` in an offset must
+      be URL-encoded as `%2B`; using `Z` avoids the problem.
+    * The API is unauthenticated and holds no user data. There are no API keys.
+
+    How to open and try this file for free: see `docs/LOCAL_TESTING.md`.
+
+servers:
+  - url: http://127.0.0.1:{port}
+    description: Local development (the backend listens on loopback by default).
+    variables:
+      port:
+        default: '8080'
+        description: The PORT environment variable of the backend.
+
+tags:
+  - name: Health
+  - name: Arrivals
+  - name: Sources
+
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Liveness check
+      description: |
+        Answers immediately. Does not load or check any data source, so it says
+        only that the process is running.
+      responses:
+        '200':
+          description: The backend is running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              example:
+                ok: true
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+
+  /v1/sources:
+    get:
+      tags: [Sources]
+      operationId: getSources
+      summary: Status of every data source
+      description: |
+        One entry per source the backend knows, including the ones it
+        deliberately does not use (they appear with the reason).
+
+        The same `from` / `to` window parameters as `/v1/arrivals` are accepted
+        and validated, and only change each source's `serviceCount` (the number
+        of services it contributes inside that window).
+
+        Like `/v1/arrivals`, the first request after start waits for the
+        initial load.
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Source statuses.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourcesResponse'
+              example:
+                sources:
+                  - id: ro-rail-open-timetable
+                    name: Orar tren - date deschise (data.gov.ro)
+                    types: [train]
+                    url: https://data.gov.ro/dataset/mers-tren-sntfc-cfr-calatori-s-a
+                    status: scheduledOnly
+                    message: Orar anual programat (date deschise OGL-ROU-1.0), fără întârzieri. Doar zilele săptămânii sunt interpretate; regulile pentru sărbători nu.
+                    fetchedAt: '2026-10-21T17:50:39.474Z'
+                    validFrom: '2025-12-14'
+                    validTo: '2026-12-12'
+                    serviceCount: 76
+                  - id: aerodatabox
+                    name: AeroDataBox - zboruri live
+                    types: [flight]
+                    url: https://doc.aerodatabox.com/
+                    status: awaitingCredentials
+                    message: Necesită un cont și o cheie API (variabila AERODATABOX_API_KEY pe server). Nu este implementat până la verificarea acoperirii SCV.
+                    fetchedAt: null
+                    validFrom: null
+                    validTo: null
+                    serviceCount: 0
+        '400':
+          $ref: '#/components/responses/BadWindow'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+
+  /v1/arrivals:
+    get:
+      tags: [Arrivals]
+      operationId: getArrivals
+      summary: Scheduled arrivals in a time window, plus source statuses
+      description: |
+        Returns every scheduled arrival whose **scheduled arrival instant** lies
+        inside `[from, to]` (both inclusive), sorted by arrival time, together
+        with the status of every source.
+
+        Default window: from 30 minutes ago to 24 hours ahead. Maximum span:
+        72 hours.
+
+        **All services are scheduled.** `dataQuality` is `scheduled`,
+        `estimatedArrival` and `actualArrival` are `null`, and `isCancelled` is
+        `false` for every service today. Do not read a scheduled time as a
+        prediction: a vehicle can arrive earlier or later.
+
+        `fetchedAt` is the age of the **oldest** source whose data is included:
+        when that source was last fetched by the backend. It is not the time of
+        the request (see `generatedAt`).
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Arrivals in the window and the status of every source.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArrivalsResponse'
+              example:
+                schemaVersion: 1
+                fetchedAt: '2026-10-21T17:50:39.474Z'
+                generatedAt: '2026-10-21T17:51:03.101Z'
+                window:
+                  from: '2026-10-21T17:21:03.101Z'
+                  to: '2026-10-22T17:51:03.101Z'
+                services:
+                  - id: 'ro-rail-open-timetable:ir-1655:2026-10-21:gara-suceava-nord:2027'
+                    type: train
+                    source:
+                      name: Orar tren - date deschise (data.gov.ro)
+                      url: https://data.gov.ro/dataset/mers-tren-sntfc-cfr-calatori-s-a
+                      isMock: false
+                    serviceNumber: IR 1655
+                    operatorName: CFR Călători
+                    routeStops: [București Nord, Suceava, Suceava Nord]
+                    arrivalPoint: Gara Suceava Nord
+                    serviceDate: '2026-10-21'
+                    scheduledArrival: '2026-10-21T17:27:00.000Z'
+                    estimatedArrival: null
+                    actualArrival: null
+                    isCancelled: false
+                    dataQuality: scheduled
+                    lastUpdated: '2026-10-21T17:50:39.474Z'
+                    sourceTimestamp: '2025-12-03T00:00:00.000Z'
+                sources:
+                  - id: ro-rail-open-timetable
+                    name: Orar tren - date deschise (data.gov.ro)
+                    types: [train]
+                    url: https://data.gov.ro/dataset/mers-tren-sntfc-cfr-calatori-s-a
+                    status: scheduledOnly
+                    message: Orar anual programat (date deschise OGL-ROU-1.0), fără întârzieri.
+                    fetchedAt: '2026-10-21T17:50:39.474Z'
+                    validFrom: '2025-12-14'
+                    validTo: '2026-12-12'
+                    serviceCount: 1
+        '400':
+          $ref: '#/components/responses/BadWindow'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+
+components:
+  parameters:
+    From:
+      name: from
+      in: query
+      required: false
+      description: |
+        Start of the window (inclusive): an ISO 8601 instant **with an explicit
+        UTC offset** (`Z` or `+02:00`). A `+` must be sent as `%2B`. Default: 30
+        minutes before the request.
+      schema:
+        type: string
+        format: date-time
+      example: '2026-10-21T00:00:00Z'
+    To:
+      name: to
+      in: query
+      required: false
+      description: |
+        End of the window (inclusive), in the same format as `from`. Must be
+        after `from`, and at most 72 hours after it. Default: 24 hours after the
+        request.
+      schema:
+        type: string
+        format: date-time
+      example: '2026-10-22T00:00:00Z'
+
+  headers:
+    CacheControl:
+      description: Always `public, max-age=60`.
+      schema:
+        type: string
+        example: public, max-age=60
+
+  responses:
+    BadWindow:
+      description: |
+        `from` or `to` is not an ISO 8601 instant with an offset, `to` is not
+        after `from`, or the window is longer than 72 hours.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            badFormat:
+              summary: Missing offset or unreadable value
+              value:
+                error: from and to must be ISO-8601 instants with an offset, with to after from
+            tooLong:
+              summary: Window over 72 hours
+              value:
+                error: the window may not exceed 72 hours
+    MethodNotAllowed:
+      description: Only `GET` is supported.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: method not allowed
+
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          description: Always `true` when the process answers.
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Short, safe message. Never contains secrets or internals.
+
+    TransportKind:
+      type: string
+      enum: [flight, train, coach]
+
+    DataQuality:
+      type: string
+      description: |
+        How trustworthy a service's times are. The contract defines four values
+        so the app can validate them; **the backend currently emits only
+        `scheduled`**, because no live source exists. A scheduled service never
+        has an estimated or actual time.
+      enum: [scheduled, estimated, live, unknown]
+
+    SourceConnection:
+      type: string
+      description: |
+        * `connected` - live data is flowing. **No source is connected today.**
+        * `scheduledOnly` - real data, but timetable-only.
+        * `unavailable` - not usable now (blocked, expired, failing, structure
+          changed, or deliberately not used); `message` says why.
+        * `awaitingCredentials` - needs an account or key that is not set.
+      enum: [connected, scheduledOnly, unavailable, awaitingCredentials]
+
+    ServiceSource:
+      type: object
+      additionalProperties: false
+      required: [name, url, isMock]
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the source.
+        url:
+          type: string
+          description: Page of the source this service comes from.
+        isMock:
+          type: boolean
+          description: Always `false` from this backend. Demo data lives only in the app.
+
+    Service:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - source
+        - serviceNumber
+        - operatorName
+        - routeStops
+        - arrivalPoint
+        - serviceDate
+        - scheduledArrival
+        - estimatedArrival
+        - actualArrival
+        - isCancelled
+        - dataQuality
+        - lastUpdated
+        - sourceTimestamp
+      properties:
+        id:
+          type: string
+          description: |
+            Stable id: `<source id>:<number>:<service date>:<arrival point>:<HHmm>`,
+            lower-case, without spaces. Includes the service date, so the same
+            number on another day has another id.
+        type:
+          $ref: '#/components/schemas/TransportKind'
+        source:
+          $ref: '#/components/schemas/ServiceSource'
+        serviceNumber:
+          type: string
+          description: Flight number, train category and number, or the coach line name.
+        operatorName:
+          type: string
+          nullable: true
+          description: Airline or operator, when the source names one.
+        routeStops:
+          type: array
+          minItems: 2
+          items:
+            type: string
+          description: |
+            Full route from origin to final destination, in order. Only stops the
+            source publishes (for some coach services just origin and Suceava).
+        arrivalPoint:
+          type: string
+          description: Station, airport or stop in Suceava where the service arrives.
+        serviceDate:
+          type: string
+          format: date
+          description: |
+            Calendar date (Europe/Bucharest) the service operates on. For an
+            overnight arrival this is the day the service started, which can be
+            the day before `scheduledArrival`.
+        scheduledArrival:
+          type: string
+          format: date-time
+          description: Timetable arrival instant in UTC.
+        estimatedArrival:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Always `null` today: there is no live source.'
+        actualArrival:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Always `null` today: there is no live source.'
+        isCancelled:
+          type: boolean
+          description: 'Always `false` today: timetables carry no cancellations.'
+        dataQuality:
+          $ref: '#/components/schemas/DataQuality'
+        lastUpdated:
+          type: string
+          format: date-time
+          description: When the backend last fetched the source this service comes from.
+        sourceTimestamp:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            A date the source itself publishes (for example the export date of
+            the rail timetable), or `null` when it publishes none.
+
+    SourceStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - types
+        - url
+        - status
+        - message
+        - fetchedAt
+        - validFrom
+        - validTo
+        - serviceCount
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransportKind'
+        url:
+          type: string
+        status:
+          $ref: '#/components/schemas/SourceConnection'
+        message:
+          type: string
+          description: |
+            Caveats, assumptions, rows that were rejected, or why the source is
+            unavailable. Romanian text. Never contains secrets.
+        fetchedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the backend last fetched the source; `null` if it never has.
+        validFrom:
+          type: string
+          format: date
+          nullable: true
+          description: Start of the period the source says its data is valid for.
+        validTo:
+          type: string
+          format: date
+          nullable: true
+          description: End (inclusive) of that period.
+        serviceCount:
+          type: integer
+          minimum: 0
+          description: Services this source contributes inside the requested window.
+
+    ArrivalsResponse:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, fetchedAt, generatedAt, window, services, sources]
+      properties:
+        schemaVersion:
+          type: integer
+          enum: [1]
+          description: Version of this contract. The app refuses any other value.
+        fetchedAt:
+          type: string
+          format: date-time
+          description: |
+            Age of the oldest source used (when it was last fetched). If no
+            source has data, the time of the response.
+        generatedAt:
+          type: string
+          format: date-time
+          description: When this response was produced.
+        window:
+          type: object
+          additionalProperties: false
+          required: [from, to]
+          properties:
+            from:
+              type: string
+              format: date-time
+            to:
+              type: string
+              format: date-time
+        services:
+          type: array
+          description: Sorted by `scheduledArrival`, then `id`.
+          items:
+            $ref: '#/components/schemas/Service'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceStatus'
+
+    SourcesResponse:
+      type: object
+      additionalProperties: false
+      required: [sources]
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceStatus'
