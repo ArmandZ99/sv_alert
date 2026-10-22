@@ -34,6 +34,7 @@ extension TransportTypeStyle on TransportType {
 
 extension ArrivalStatusStyle on ArrivalStatus {
   String get label => switch (this) {
+    ArrivalStatus.scheduled => Strings.statusScheduled,
     ArrivalStatus.onTime => Strings.statusOnTime,
     ArrivalStatus.delayed => Strings.statusDelayed,
     ArrivalStatus.arrivingSoon => Strings.statusArrivingSoon,
@@ -43,6 +44,7 @@ extension ArrivalStatusStyle on ArrivalStatus {
   };
 
   IconData get icon => switch (this) {
+    ArrivalStatus.scheduled => Icons.event_note_outlined,
     ArrivalStatus.onTime => Icons.check_circle_outline,
     ArrivalStatus.delayed => Icons.schedule,
     ArrivalStatus.arrivingSoon => Icons.notifications_active_outlined,
@@ -52,6 +54,7 @@ extension ArrivalStatusStyle on ArrivalStatus {
   };
 
   Color get color => switch (this) {
+    ArrivalStatus.scheduled => AppColors.neutral,
     ArrivalStatus.onTime => AppColors.ok,
     ArrivalStatus.delayed => AppColors.warning,
     ArrivalStatus.arrivingSoon => AppColors.primary,

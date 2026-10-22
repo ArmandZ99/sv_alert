@@ -44,9 +44,23 @@ class FreshnessBanners extends StatelessWidget {
               ),
             ],
           ),
-        if (controller.isMock) ...[
+        if (controller.degradedReason != null) ...[
           const SizedBox(height: 10),
-          const NoticeBanner.mock(),
+          NoticeBanner(
+            title: Strings.degradedTitle,
+            body: controller.degradedReason!,
+            icon: Icons.cloud_off_outlined,
+          ),
+        ],
+        if (controller.hasMock) ...[
+          const SizedBox(height: 10),
+          controller.hasReal
+              ? const NoticeBanner.mixed()
+              : const NoticeBanner.mock(),
+        ],
+        if (controller.hasReal && !controller.hasLiveTimes) ...[
+          const SizedBox(height: 10),
+          const NoticeBanner.scheduledOnly(),
         ],
         if (hasData && error != null) ...[
           const SizedBox(height: 10),

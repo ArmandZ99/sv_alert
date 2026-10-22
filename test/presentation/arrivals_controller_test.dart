@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:travelalerts/features/transport/data/sources/source_status.dart';
 import 'package:travelalerts/features/transport/data/transport_repository.dart';
 import 'package:travelalerts/features/transport/domain/transport_type.dart';
 import 'package:travelalerts/features/arrivals/presentation/arrivals_controller.dart';
@@ -30,7 +31,9 @@ void main() {
     expect(controller.status, LoadStatus.ready);
     expect(controller.allServices, hasLength(1));
     expect(controller.error, isNull);
-    expect(controller.isMock, isTrue);
+    expect(controller.hasReal, isTrue);
+    expect(controller.hasMock, isFalse);
+    expect(controller.isMock, isFalse);
   });
 
   test('first failure gives an error state with the safe message', () async {
@@ -82,10 +85,10 @@ void main() {
     expect(controller.error, isNull);
   });
 
-  test('data becomes stale after the threshold', () async {
+  test('live data becomes stale after the short threshold', () async {
     final controller = build(
       FakeRepository([
-        snapshotOf([makeService()]),
+        snapshotOf([makeService(scheduled: 20, estimated: 20)]),
       ]),
     );
     await controller.refresh();
@@ -94,6 +97,76 @@ void main() {
     current = testNow.add(const Duration(minutes: 11));
     expect(controller.isStale, isTrue);
     expect(controller.dataAge, const Duration(minutes: 11));
+  });
+
+  test('timetable-only data is stale only after much longer', () async {
+    final controller = build(
+      FakeRepository([
+        snapshotOf([makeService()]), // no estimate: timetable only
+      ]),
+    );
+    await controller.refresh();
+    expect(controller.hasLiveTimes, isFalse);
+    current = testNow.add(const Duration(hours: 35));
+    expect(controller.isStale, isFalse);
+    current = testNow.add(const Duration(hours: 37));
+    expect(controller.isStale, isTrue);
+  });
+
+  test('real, demo and mixed lists are told apart per service', () async {
+    final real = makeService(id: 'real');
+    final demo = makeService(id: 'demo', mock: true);
+
+    var c = build(
+      FakeRepository([
+        snapshotOf([real]),
+      ]),
+    );
+    await c.refresh();
+    expect((c.hasReal, c.hasMock, c.isMock), (true, false, false));
+
+    c = build(
+      FakeRepository([
+        snapshotOf([demo]),
+      ]),
+    );
+    await c.refresh();
+    expect((c.hasReal, c.hasMock, c.isMock), (false, true, true));
+
+    c = build(
+      FakeRepository([
+        snapshotOf([real, demo]),
+      ]),
+    );
+    await c.refresh();
+    expect((c.hasReal, c.hasMock, c.isMock), (true, true, false));
+  });
+
+  test('source status and a fallback reason come from the snapshot', () async {
+    final controller = build(
+      FakeRepository([
+        TransportSnapshot(
+          services: [makeService(mock: true)],
+          fetchedAt: testNow,
+          isMock: true,
+          degradedReason: 'Datele reale nu au putut fi încărcate.',
+          sources: const [
+            SourceStatusInfo(
+              id: 'a',
+              name: 'A',
+              connection: SourceConnection.scheduledOnly,
+              message: 'm',
+            ),
+          ],
+        ),
+      ]),
+    );
+    await controller.refresh();
+    expect(controller.degradedReason, contains('nu au putut'));
+    expect(
+      controller.sources.single.connection,
+      SourceConnection.scheduledOnly,
+    );
   });
 
   test(

@@ -2,6 +2,7 @@ import '../../domain/arrival_status.dart';
 import '../../domain/transport_service.dart';
 import '../../domain/transport_type.dart';
 import '../transport_repository.dart';
+import 'source_status.dart';
 
 /// Result of parsing a normalized payload: the valid services, plus a reason
 /// for every service that was rejected (never silently dropped).
@@ -80,6 +81,7 @@ abstract final class NormalizedArrivalsParser {
         services: services,
         fetchedAt: fetchedAt,
         isMock: services.isNotEmpty && services.every((s) => s.source.isMock),
+        sources: _sources(json['sources']),
       ),
       rejected: rejected,
     );
@@ -181,6 +183,34 @@ abstract final class NormalizedArrivalsParser {
       ),
       error: null,
     );
+  }
+
+  /// Optional `sources` list: one entry per source with its connection state.
+  /// Malformed entries are skipped; the list never makes the payload fail.
+  static List<SourceStatusInfo> _sources(Object? raw) {
+    if (raw is! List) return const [];
+    final byName = SourceConnection.values.asNameMap();
+    final result = <SourceStatusInfo>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final id = _text(item['id']);
+      final name = _text(item['name']);
+      final connection = byName[item['status']];
+      if (id == null || name == null || connection == null) continue;
+      final count = item['serviceCount'];
+      final fetched = item['fetchedAt'];
+      result.add(
+        SourceStatusInfo(
+          id: id,
+          name: name,
+          connection: connection,
+          message: _text(item['message']) ?? '',
+          serviceCount: count is int ? count : 0,
+          fetchedAt: fetched == null ? null : _instant(fetched),
+        ),
+      );
+    }
+    return result;
   }
 
   static String? _text(Object? value) {

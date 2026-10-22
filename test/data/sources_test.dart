@@ -77,7 +77,7 @@ void main() {
       expect(coach.delayMinutes, isNull);
       expect(
         coach.statusAt(DateTime.utc(2026, 10, 21, 9)),
-        ArrivalStatus.unknown,
+        ArrivalStatus.scheduled,
       );
     });
 
@@ -197,6 +197,36 @@ void main() {
       );
       for (final type in TransportType.values) {
         expect(DataSourceCatalog.hasVerifiedSource(type), isFalse);
+      }
+    });
+
+    test(
+      'every transport type has at least one implemented source, none verified',
+      () {
+        for (final type in TransportType.values) {
+          expect(
+            DataSourceCatalog.hasImplementedSource(type),
+            isTrue,
+            reason: '$type',
+          );
+        }
+      },
+    );
+
+    test('sources that are not used are never described as implemented', () {
+      for (final id in [
+        'tarsin',
+        'autogari-sosiri',
+        'aerodatabox',
+        'cfr-trenul-meu',
+      ]) {
+        final source = DataSourceCatalog.all.firstWhere((s) => s.id == id);
+        expect(
+          source.status,
+          isNot(IntegrationStatus.implementedScheduledOnly),
+          reason: id,
+        );
+        expect(source.status, isNot(IntegrationStatus.verified), reason: id);
       }
     });
 

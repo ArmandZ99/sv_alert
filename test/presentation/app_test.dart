@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:travelalerts/features/transport/data/remote_transport_repository.dart';
+import 'package:travelalerts/features/transport/data/sources/source_status.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:travelalerts/features/settings/data/preferences_store.dart';
 import 'package:travelalerts/features/settings/domain/notification_preferences.dart';
 import 'package:travelalerts/app/app.dart';
 import 'package:travelalerts/features/transport/data/mock_transport_repository.dart';
 import 'package:travelalerts/features/transport/data/transport_repository.dart';
+import 'package:travelalerts/features/transport/domain/arrival_status.dart';
+import 'package:travelalerts/features/transport/domain/transport_service.dart';
+import 'package:travelalerts/features/transport/domain/transport_type.dart';
 
 import '../support.dart';
 
@@ -281,7 +288,7 @@ void main() {
       await tester.tap(find.text('Linia Botoșani – Suceava'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Stare necunoscută'), findsWidgets);
+      expect(find.text('Programat'), findsWidgets);
       expect(find.text('Estimare indisponibilă'), findsWidgets);
     });
 
@@ -450,5 +457,161 @@ void main() {
       );
       expect(find.textContaining('Bolt'), findsOneWidget);
     });
+  });
+
+  group('real data', () {
+    TransportSnapshot realSnapshot({List<dynamic> extra = const []}) =>
+        TransportSnapshot(
+          services: [
+            makeService(
+              id: 'r1',
+              number: 'IR 1655',
+              scheduled: 40,
+              quality: DataQuality.scheduled,
+              sourceName: 'Orar tren - date deschise (data.gov.ro)',
+            ),
+            makeService(
+              id: 'r2',
+              type: TransportType.coach,
+              number: 'TASA București – Suceava',
+              scheduled: 70,
+              quality: DataQuality.scheduled,
+              sourceName: 'TASA Suceava - trasee',
+            ),
+            ...extra.cast<TransportService>(),
+          ],
+          fetchedAt: testNow,
+          isMock: false,
+          sources: const [
+            SourceStatusInfo(
+              id: 'ro-rail-open-timetable',
+              name: 'Orar tren - date deschise (data.gov.ro)',
+              connection: SourceConnection.scheduledOnly,
+              message: 'Orar anual programat, fără întârzieri.',
+              serviceCount: 1,
+            ),
+            SourceStatusInfo(
+              id: 'aerodatabox',
+              name: 'AeroDataBox - zboruri live',
+              connection: SourceConnection.awaitingCredentials,
+              message: 'Necesită un cont și o cheie API.',
+            ),
+            SourceStatusInfo(
+              id: 'tarsin',
+              name: 'Tarsin - orar autocare',
+              connection: SourceConnection.unavailable,
+              message: 'Orarul se încarcă dintr-o aplicație JavaScript.',
+            ),
+          ],
+        );
+
+    testWidgets('timetable-only real data says it is not real time', (
+      tester,
+    ) async {
+      await pumpApp(tester, repository: FakeRepository([realSnapshot()]));
+      expect(find.text('Orar programat, nu timp real'), findsOneWidget);
+      expect(find.text('Date demonstrative (mock)'), findsNothing);
+      expect(find.text('Date reale și demonstrative'), findsNothing);
+      expect(find.text('DATE DEMO'), findsNothing);
+      expect(find.text('EXEMPLU'), findsNothing);
+
+      await openTab(tester, 'Sosiri');
+      expect(find.text('IR 1655'), findsOneWidget);
+      // Status is "Programat", never on time / delayed, and the source is named.
+      expect(find.text('Programat'), findsWidgets);
+      expect(find.text('La timp'), findsNothing);
+      expect(find.textContaining('Întârziat'), findsNothing);
+      expect(
+        find.text('Orar tren - date deschise (data.gov.ro)'),
+        findsWidgets,
+      );
+      expect(find.text('Estimare indisponibilă'), findsWidgets);
+    });
+
+    testWidgets(
+      'real data is not flagged stale just because the server cached it for hours',
+      (tester) async {
+        final snapshot = TransportSnapshot(
+          services: realSnapshot().services,
+          fetchedAt: testNow.subtract(const Duration(hours: 5)),
+          isMock: false,
+        );
+        await pumpApp(tester, repository: FakeRepository([snapshot]));
+        expect(find.text('Datele par vechi'), findsNothing);
+        expect(find.text('Actualizat acum 5 h'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'real and demo services in one list are labelled individually',
+      (tester) async {
+        final snapshot = realSnapshot(
+          extra: [
+            makeService(id: 'm1', number: 'DEMO 1', scheduled: 50, mock: true),
+          ],
+        );
+        await pumpApp(tester, repository: FakeRepository([snapshot]));
+        expect(find.text('Date reale și demonstrative'), findsOneWidget);
+        expect(find.text('Date demonstrative (mock)'), findsNothing);
+
+        await openTab(tester, 'Sosiri');
+        expect(
+          find.text('DATE DEMO'),
+          findsOneWidget,
+          reason: 'only the demo card',
+        );
+        expect(find.text('IR 1655'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'an unreachable backend falls back to labelled demo data and says why',
+      (tester) async {
+        final repo = FallbackTransportRepository(
+          primary: RemoteTransportRepository(
+            baseUrl: Uri.parse('https://api.example.ro'),
+            client: MockClient((_) async => http.Response('down', 503)),
+          ),
+          fallback: mockRepo(),
+        );
+        await pumpApp(tester, repository: repo);
+        expect(find.text('Date reale indisponibile'), findsOneWidget);
+        expect(
+          find.textContaining('se afișează date demonstrative'),
+          findsOneWidget,
+        );
+        expect(find.text('Date demonstrative (mock)'), findsOneWidget);
+        await openTab(tester, 'Sosiri');
+        expect(find.text('DATE DEMO'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'settings shows each source with the backend status and message',
+      (tester) async {
+        await pumpApp(tester, repository: FakeRepository([realSnapshot()]));
+        await openTab(tester, 'Setări');
+        await tester.scrollUntilVisible(find.text('SURSE DE DATE'), 200);
+        expect(
+          find.textContaining('Stare raportată de serverul de date'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Nicio sursă reală nu este conectată'),
+          findsNothing,
+        );
+        await tester.scrollUntilVisible(
+          find.text('AeroDataBox - zboruri live'),
+          200,
+        );
+        expect(find.text('Necesită cont sau cheie API'), findsOneWidget);
+        expect(
+          find.textContaining('Orarul se încarcă dintr-o aplicație JavaScript'),
+          findsOneWidget,
+        );
+        expect(find.text('Doar orar programat · 1 curse'), findsOneWidget);
+        expect(find.textContaining('Conectat (timp real)'), findsNothing);
+      },
+    );
   });
 }

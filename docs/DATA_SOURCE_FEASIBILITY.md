@@ -1,113 +1,124 @@
-# Data source feasibility — Phase 2
+# Data sources: feasibility and what is implemented
 
-Research date: **2026-10-21**. Method: reading the official public pages, their published terms and `robots.txt`, and vendor pricing pages. **No data was scraped, downloaded or extracted, and no account was created or API called.** Pages and terms can change without notice (CFR §25, Autogari §14.2), so re-check before building.
+Research dates: **2026-10-21** (feasibility) and the same day for the implementation checks below. Method: reading each official public page, its published terms and `robots.txt`, and vendor pricing pages; for the implemented sources, running the real parsers on the live pages and on the official files. Pages and terms can change without notice (CFR §25, Autogari §14.2), so re-check before relying on them.
 
-**Bottom line:** no real source can be integrated today without something only you can provide (an account, or written permission). Nothing is `verified`. The app therefore still runs on explicit mock data, and the Settings screen now says so.
+**Bottom line.** Three of the four sources that publish openly are now read by a small backend and reach the app as real, **timetable-only** data: **flights** (airport timetable: HTML for the summer season, the linked PDF for winter), **trains** (official open-licence annual timetable) and **coaches** (TASA and the airport's Cernăuți shuttle). A live run on 2026-10-21 produced **96 real services in 24 h (76 trains, 11 coaches, 9 flights)**. None of it is live: there are no estimates, delays or cancellations anywhere, and every service says so. No live source is connected, and the alert engine is not connected to any of this data.
 
-Legend: ✔ confirmed on an official page · ? not verified · ✘ not provided by the source.
+Legend: ✔ confirmed · ? not verified · ✘ not provided.
 
-Integration status values: **verified** (authorized, implemented, checked against real responses) · **awaiting credentials** · **awaiting permission** · **awaiting verification** (an addition: looks usable, but origin or coverage is unconfirmed) · **unavailable**.
+## What works now
 
-## Summary
+| Type | Source | Status | Times | Real services in the live run | Main limitation |
+| --- | --- | --- | --- | --- | --- |
+| Flights | Airport timetable: HTML tables (summer) + linked arrivals PDF (winter) | **scheduled-only** | Scheduled | 9 (summer, 21 Oct); winter from 25 Oct | Winter comes from a PDF read with `pdftotext` (must be installed). One transposed pair of rows in the source PDF is rejected. No reuse permission confirmed. |
+| Trains | data.gov.ro annual timetable XML, OGL-ROU-1.0 (CFR Călători + Interregional Călători files) | **scheduled-only** | Scheduled | 76 | No delays. Other operators' files not integrated. Holiday rules ignored. Files must be re-pointed every December. |
+| Coaches | TASA route page (`tasasuceava.ro/trasee`) | **scheduled-only** | Scheduled | 4 | Operating days and validity not published (assumed daily). Few arrivals published. |
+| Coaches | Airport "Transfer aeroport" page (Cernăuți shuttle) | **scheduled-only** | Scheduled | 7 | No validity end; operator per trip not stated. No reuse permission confirmed. |
+| Coaches | Tarsin | **unavailable** | none | 0 | Timetable only in a JavaScript app; its internal API is not used. |
+| Coaches | Autogari.ro | **unavailable** (not used) | none | 0 | Terms §8.1 forbid copying without written consent. |
+| Flights | AeroDataBox (live) | **awaiting credentials** | n/a | 0 | Not implemented; needs an account, then a check of SCV coverage and fields. |
+| Trains | CFR/Infofer "Trenul meu" (live delay) | awaiting permission | n/a | 0 | Website only, no documented API. |
 
-| Type | Best candidate | Times it can give | Status | What unblocks it |
+"Status" is the value the backend reports per source: `connected`, `scheduledOnly`, `unavailable` or `awaitingCredentials`. Nothing is `connected`. Nothing is called verified: for the airport and TASA pages there is no explicit reuse licence, so permission is **unconfirmed** (see "Needs you").
+
+## Fields actually available, per source
+
+| Field | Airport timetable | Rail XML | TASA | Airport transfer |
 | --- | --- | --- | --- | --- |
-| Flights | AeroDataBox API (via a backend) | Scheduled; estimated/actual **?** | awaiting credentials | Your account, then a check of SCV coverage and fields |
-| Flights | Airport's published timetable | Scheduled only | awaiting permission | Written OK from the airport to reuse it programmatically |
-| Trains | CFR/Infofer "Trenul meu" (real-time delay) | Live delay ✔ on the website; no API | awaiting permission | Written agreement with CFR Călători / ARF |
-| Trains | Open-licence timetable (GTFS) | Scheduled only | awaiting verification | Confirm official origin, Suceava / Suceava Nord coverage and download rights |
-| Coaches | Autogari.ro arrivals page | Scheduled only | awaiting permission | Written consent from BILETERIA SRL (terms §8.1) |
-| Coaches | Direct operator feeds | Unknown | unavailable (none found) | Agreements with each operator serving Suceava |
+| Service identifier | ✔ flight number | ✔ category + number (e.g. IR 1831) | ✔ `TASA <origin> – <destination>` | ✔ direction + route label |
+| Operator | ✔ airline | ✔ per file (CFR Călători / Interregional) | ✔ TASA | ✔ both operators named, trip not assigned |
+| Full route / intermediate stops | origin only (direct flights) | ✔ origin, commercial stops, destination | ✔ only where the operator lists stops (the București direction lists none) | ✔ every station of the table |
+| Exact arrival point in Suceava | ✔ Aeroportul Suceava (SCV) | ✔ Gara Suceava / Suceava Nord / Suceava Vest | ✔ Autogara Nouă TASA | ✔ Autogara Suceava, or the airport (Salcea) |
+| Scheduled arrival | ✔ (local, `(+1)` handled) | ✔ (seconds after operating-day midnight) | ✔ | ✔ |
+| Estimated / actual arrival | ✘ | ✘ | ✘ | ✘ |
+| Delay | ✘ | ✘ | ✘ | ✘ |
+| Cancellation | ✘ | ✘ | ✘ | ✘ |
+| Validity period | ✔ from the page heading | ✔ from the file header (14 Dec 2025 - 12 Dec 2026) | ✘ | ✘ |
+| Source timestamp | ✘ | ✔ export date (3 Dec 2025) | ✘ | ✘ |
 
-## 1. Flights — Suceava Airport (SCV)
+Every service also records its **source name and link**, a `dataQuality` of `scheduled`, and `lastUpdated` (when the backend fetched the source). The response's `fetchedAt` is the age of the oldest source used.
 
-### 1a. Official airport website — `aeroportsuceava.ro`
-- Links: [home](https://www.aeroportsuceava.ro/ro/), [flight schedule page](https://aeroportsuceava.ro/ro/2016-01-29-10-35-08), [contact](https://aeroportsuceava.ro/ro/contact/informatii).
-- ✔ Publishes seasonal **arrival and departure timetables** (29 Mar–24 Oct 2026 and 25 Oct 2026–27 Mar 2027) as embedded tables and PDFs.
-- ✔ **No live board:** no estimated or actual times, delays or cancellations on the page.
-- ✔ **No API, feed or open-data page** is mentioned or linked.
-- ✔ **No terms of use** found; the footer says "Toate drepturile rezervate" (all rights reserved). Absence of terms is not permission to reuse.
-- Fields: service id ✔ (e.g. TAROM RO 809/810, Wizz Air W4/W6), route ✔ (origin/destination airports), Suceava arrival point ✔ (SCV), scheduled arrival ✔, estimated ✘, actual ✘, delay ✘, cancellation ✘.
-- Nature: **scheduled**, seasonal. Refresh: when the airport republishes (twice a year).
-- Status: **awaiting permission** (to parse or mirror). Practical use: a reference to cross-check a live provider, or a schedule-only fallback if the airport agrees.
+## Source by source
 
-### 1b. AeroDataBox (candidate live provider)
-- Links: [docs](https://doc.aerodatabox.com/), [pricing](https://aerodatabox.com/pricing).
-- ✔ Offered through API.Market, RapidAPI, or directly. ✔ Pricing page lists a free **Basic** tier (400 API units/month, 1 request/s, **commercial use not allowed, attribution required**) and paid tiers: Pro $7.50 (API.Market) or $8 (RapidAPI) for 5,000 units; Ultra $37.50–$40 for 50,000; direct plans from $19/month. Commercial use allowed on paid tiers. **Reselling data is not allowed on any plan.** Paid plans have longer caching rights.
-- ✔ A FIDS (airport departures/arrivals) page-size limit is listed for Basic (12 hours), which suggests the airport board endpoint is available.
-- ✔ The vendor says coverage is "extensive but not worldwide".
-- **?** Not verified (the field-level docs were not readable here): whether SCV is covered, whether arrivals carry estimated/revised and actual times, the status values, how many "units" one airport call costs, and how fresh estimates are. Treat live estimates as **unknown** until a real response from SCV is inspected.
-- Credentials: an API key. **It must live on a backend, never in the Flutter app.**
-- Status: **awaiting credentials**.
+### Flights: airport timetable (summer HTML tables + winter PDF)
+- Page: [flight schedule](https://aeroportsuceava.ro/ro/2016-01-29-10-35-08). `robots.txt` disallows only Joomla internals (not `/images/`), so the page and its PDFs are allowed.
 
-### 1c. Other flight APIs (not preferred)
-- **aviationstack** ([pricing](https://aviationstack.com/product)): ✔ Free plan 100 requests/month, non-commercial; paid from $49.99/month; status updates delayed 30–60 s. ? Airport arrivals fields and SCV coverage unverified. Fallback only.
-- **FlightAware AeroAPI:** third-party sources disagree on its free tier, so nothing is confirmed. ? Not assessed further.
-- OpenSky (ADS-B positions) gives aircraft positions, not scheduled/estimated arrivals per airport, so it is not a fit.
+**What the raw HTTP response contains** (re-fetched and counted on 2026-10-21; 109,266 bytes, identical to the first fetch, not a search-engine rendering):
+- **14 tables: 7 departures and 7 arrivals (one per weekday), all for the summer period 29 March - 24 October 2026.** There are **no winter rows in the HTML.**
+- The winter period "25 OCTOMBRIE 2026 - 27 MARTIE 2027" appears four times, but only as the **text of links** to the winter departures/arrivals PDFs. The same goes for the summer PDFs. The table heading itself states the summer period.
+- So the question "are winter arrivals in the HTML or only in PDFs" has a definite answer: **only in the linked PDF.** (The page's `Last-Modified` header is the request time, not a content date.)
 
-## 2. Trains — Suceava and Suceava Nord
+**The winter arrivals PDF** (`ORAR_SOSIRI_ZBORURI_REGULATE_OCTOMBRIE_2026_MARTIE_2027_2.pdf`, 251,180 bytes, `Last-Modified` 20 Oct 2026): public, no login, not restricted by `robots.txt`; downloaded once with your approval and read locally.
+- It is a **text PDF** (3 pages, 63 flight rows), not a scan. Text extraction works with `pdftotext -raw -enc UTF-8` (Xpdf 4.06 here): rows come out one per line, with correct diacritics and the date-limit remarks right after their row. The default and `-layout` modes **misalign** the cells (they are vertically centred in tall rows), so they must not be used. Poppler's `pdftotext -raw` order has not been tested; check it with `dart run tool/inspect_sources.dart --airport-pdf <file>` on the deployment host.
+- Format: `<day> <number> <airline> [aircraft] <origin> Suceava (SCV) <dep> <arr>[ (+1)]`. 16 of the 63 rows carry a dated remark, in exactly two forms: "Începând din dd.mm.yyyy" and "Operează până pe dd.mm.yyyy". Every such date falls on the weekday of its row, which shows the dates are **inclusive** first/last operating days.
+- Assumptions, as for the HTML tables: the day is the operating (departure) day, the arrival time is Suceava time ("ORE LOCALE" in the footer), `(+1)` is the next calendar day.
+- **The PDF contains an error.** In the Thursday block, W4 3648 (London) is printed with 21:50 -> 23:00 and RO 809 (Bucharest) with 20:25 -> 01:35 (+1), the opposite of every other day (London takes 5 h 10, Bucharest 1 h 10). I confirmed with the text coordinates that this is what the document shows, not an artefact of extraction. The parser rejects rows whose duration differs by more than 25 minutes from their origin's usual one (only for origins with at least 3 rows) and reports them in the source status. **Result: the Thursday W4 3648 and RO 809 arrivals are missing rather than wrong.** Worth telling the airport.
+- Cross-checks done: every flight number present in both seasons has the same origin; each origin has one stable duration across all its other rows; the real file gives 63 rows, 30 patterns after merging weekdays, and exactly those 2 rejected rows.
 
-### 2a. CFR Călători / Infofer "Trenul meu"
-- Links: [Trains page](https://bilete.cfrcalatori.ro/ro-RO/Trains), [terms](https://bilete.cfrcalatori.ro/ro-RO/Home/TermsConditions), [CFR Călători](https://www.cfrcalatori.ro/).
-- ✔ The public website lets a person look up a train (`/ro-RO/Tren/{number}`) and see stop times and **real-time progress including delay**. News reports say a real-time position map (with delays) launched on the ARF Infofer platform in November 2024; positions for CFR trains are approximated from the train-guidance system (reported, not verified by me).
-- ✔ **This is website functionality, not a documented API.** No API, open-data or developer page was found.
-- ✔ The terms (reviewed) are **silent** on automated access, copying and API use. Silence is not authorization. §22 refers to separate contracts for "authorized distributors". §25: terms change without notice. `www.cfrcalatori.ro/robots.txt` allows all crawlers, but that file covers the marketing site, not the ticketing host, and robots.txt is not permission.
-- Fields: train number ✔, stop times ✔, delay ✔ (on the website), cancellation **?**, full route **?**, arrival at Suceava vs Suceava Nord **?** (not confirmed for either station), actual arrival **?**. Field names and update rate of any machine-readable form are unknown.
-- Nature: **live (website only)**. Refresh rate and rate limits: unknown.
-- Status: **awaiting permission**. Contact: the terms (§19) list `bileteonline@cfrcalatori.ro` for questions; ARF / Informatică Feroviară (infrastructure data) are the other party to ask.
+**How the adapter handles the seasons** (`AirportTimetableAdapter`):
+- The HTML tables are parsed with the period named in the heading above them (never one taken from a link's text). The page's arrivals PDF links are discovered (same host, https, "SOSIRI" in the text, period in the text); departures PDFs and other hosts are ignored.
+- A linked PDF is read only if its season is not over, starts within 60 days, and **does not overlap the season already in the tables**. So when the airport later puts the winter timetable into the HTML tables, the winter PDF and the ended summer PDF are not fetched and nothing is duplicated.
+- Each season keeps its own period, so a service date belongs to exactly one season: summer services end with Saturday 24 Oct (a Saturday `(+1)` arrival at 01:35 on the 25th is still the summer service), winter services start with Sunday 25 Oct. A PDF whose own period differs from its link is ignored.
+- **Failures are local.** If the winter PDF cannot be fetched, extracted or parsed, the valid summer timetable is still served and the status says why; once the summer period is over and the PDF is unusable, the source is `unavailable` with the reason. The source is reported `unavailable` only when **no published season covers today or later** (verified: at 21 Oct and 26 Oct it is `scheduledOnly`; at 30 Mar 2027, after 27 Mar, it is `unavailable`, naming 27.03.2027 as the last end).
+- All times stay `scheduled`; nothing is estimated, and the alert engine is not connected.
 
-### 2b. Open-licence national timetable (GTFS)
-- Link: [MobilityDatabase entry mdb-3236](https://mobilitydatabase.org/feeds/gtfs/mdb-3236).
-- ✔ The entry describes a GTFS feed built from Informatică Feroviară open data, licence **OGL-ROU-1.0** (the Romanian open government licence), valid 14 Dec 2025–12 Dec 2026. ✔ It is hosted by a third party (a converter), not by the railway.
-- **?** Not verified: that the official publisher offers this data (e.g. on data.gov.ro), that CFR Călători services and the Suceava / Suceava Nord stops are present, and the right to fetch it from the third-party host. I did **not** download it.
-- Nature: **scheduled only**: no delays, no live arrival. Cannot support delay alerts.
-- Status: **awaiting verification**. Needs your OK to download and inspect one file (see next steps).
+**Requirements and limits**
+- The backend host needs the `pdftotext` command (`poppler-utils` or Xpdf tools); override its path with `PDFTOTEXT_PATH`. Without it the PDF season is skipped with the message "pdftotext nu este instalat" and only HTML seasons work.
+- The PDF is fetched at most once a day (`If-Modified-Since`/`ETag` revalidation), the page every 6 hours.
+- If the airport changes the PDF layout, the parser rejects the file (unknown structure or unreadable rows) and says so; it never guesses. The airport footer warns that the program may change at the operator's decision, so a published time can still be wrong.
+- Terms: none published for the page or the PDFs; footer "Toate drepturile rezervate". **Reading the PDF has the same unconfirmed reuse status as the HTML tables;** nothing here establishes a right to republish them.
 
-## 3. Coaches and intercity buses
+### Trains: official annual timetable (open licence)
+- Datasets: [CFR Călători (SNTFC) 2025-2026](https://data.gov.ro/dataset/mers-tren-sntfc-cfr-calatori-s-a) (11.9 MB) and [Interregional Călători 2025-2026](https://data.gov.ro/dataset/mers-tren-interregional-calatori) (1.9 MB). Dataset pages state licence **OGL-ROU-1.0**, publisher S.C. Informatică Feroviară S.A. on data.gov.ro (timetable published by C.F.R. S.A.), "static reference information, not real-time". I did not read the licence text itself, only the licence named on the dataset pages.
+- Verified in the files (downloaded once, with your approval, and checked): header validity **14 Dec 2025 to 12 Dec 2026**, export 3 Dec 2025; 1,256 and 216 trains; **all three stations present**: Suceava (code 51607), Suceava Nord (51645), Suceava Vest (54439).
+- How the XML is read is **inferred from the data** (the schema file is not published with it): per-leg `OraS` is the arrival in seconds after midnight; the stop type of a station sits on the leg that leaves it (`C` commercial, `A` long reversal dwell, `N` no stop, `T` technical). Cross-check: with this rule Suceava Vest gets exactly 4 trains, matching the 4 a public station page lists. For Suceava and Suceava Nord that page lists more (84 and 51) than the two files give (56 and 32); the likely reason is other operators' files (Regio Călători and others, not integrated), but that is an inference, not verified.
+- Days of operation: bits 0-6 of `Zile` are read as Monday to Sunday (consistent patterns such as 31 = Mon-Fri, 352 = Sat+Sun, 368 = Fri-Sun). Higher bits (probably public holidays) are undocumented and ignored, so holiday-day services can be wrong. Calendar entries of an unknown type are skipped and counted.
+- Station names are tidied (cedillas to comma-below, operational suffixes such as "Hm." dropped). Trains are shown with the real route, but arrival is at each Suceava station separately.
+- The timetable is static: it will not show delays, cancellations or replacement services.
+- The dataset URLs contain yearly ids. After the second Saturday of December the status becomes `unavailable` ("timetable expired") until `RAIL_SNTFC_URL` / `RAIL_INTERREGIONAL_URL` are updated.
 
-### 3a. Autogari.ro
-- Links: [arrivals in Suceava](https://www.autogari.ro/Suceava/Sosiri), [Suceava page](https://www.autogari.ro/suceava), [terms](https://www.autogari.ro/Termeni), [about](https://www.autogari.ro/Despre), [contact](https://www.autogari.ro/Contact).
-- ✔ Operated by BILETERIA SRL, which states it is a schedule-information site and **not a transport company**.
-- ✔ The arrivals page lists a clock time, an operator and a chain of stops. It shows **no delay or status**, so it is a **timetable**. It does not name the Suceava arrival point in the part I read. The page text exceeds what I read (the last ~55,000 characters were not examined).
-- ✔ **Terms:** §8.1 — content may not be reproduced, copied or exploited commercially without the administrator's **prior written consent**; §8.2–8.3 — content, including its systems and structure, is under copyright and needs the rights holders' permission. The terms do not mention bots or an API. ✔ Access is monitored (§5.3.2(d)). `robots.txt` disallows a list of dynamic paths (routes, checkout and several `.php` endpoints).
-- ✔ No API or data licence is offered. Operators can register via a "Înscriere transportator" form and the REZMax console, which suggests data comes from operators; the source of the schedule is not stated.
-- Status: **awaiting permission**. Reading the page as a person is fine; **extracting or republishing its data needs written consent.**
+### Coaches: TASA
+- Page: [trasee](https://www.tasasuceava.ro/trasee/). `robots.txt` disallows only `/wp-admin/`. No terms-of-use page is linked from the site (footer has GDPR, complaints, ANPC).
+- Produced: the three published arrivals from București (17:45, 19:00, 23:30 at Autogara Nouă TASA) and the 06:50 Botoșani - Târgu Mureș service that passes through Suceava. Not produced: departures from Suceava (not arrivals) and the Târgu Mureș - Botoșani direction (no Suceava time is published).
+- The page shows the seven weekday letters identically for every route and no validity period, so services are **assumed daily**; the app's source status says so.
 
-### 3b. Direct operator integrations
-- Operators named on the page (e.g. Lilian Express, Family SRL, Euro Tip) are only names seen on a listing. No operator API, feed or contact channel was found, and live arrival estimates for coaches were not found anywhere.
-- Status: **unavailable** until an operator agrees to share data. Coaches stay in scope: they remain demo data until a permitted source exists.
+### Coaches: airport transfer page (Cernăuți - Suceava - airport)
+- Page: [transfer aeroport](https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport). Same `robots.txt` as above; same "all rights reserved" footer.
+- Produced: arrivals at the Suceava bus station (08:50, 12:30, 16:50, 20:30) and at the airport (09:30, 17:30), with every table station as the route. The text says the service runs daily with two operators; it does not say which operator runs which trip, and gives no validity end.
 
-## MVP recommendation
+### Tarsin (not used)
+- `robots.txt` disallows `/administrator/`, `/agentie/`, `/monitor/`, `/pasageri/`; the route pages are allowed but are a ~9 KB JavaScript shell that contains **no timetable**. The timetable is fetched by the page's own scripts from an internal API. Calling an undocumented internal API is not a published page, so it is **not done**. The terms page was not reviewed. Needs an agreement or a feed.
 
-1. **Ship what is true.** Keep the demo-labelled app. The in-app notice and "Surse de date" card now state that no real source is connected.
-2. **Flights first (lowest barrier).** Create an AeroDataBox account (via API.Market or RapidAPI), use the playground to request SCV arrivals for a week, and compare them with the airport PDF timetable and real flights. Check for estimated/revised and actual times, cancellations and update behaviour. Then decide the plan: the free tier forbids commercial use; ask the vendor whether a free community app qualifies. Calls must go through a small backend that holds the key and polls on a schedule.
-3. **Trains: ask, in parallel.** Write to CFR Călători (and ARF / Informatică Feroviară) requesting authorized programmatic access to arrival and delay data for Suceava and Suceava Nord. Meanwhile, with your OK, verify the open GTFS timetable as a **scheduled-only** fallback.
-4. **Coaches: ask for consent.** Write to BILETERIA SRL for written consent or a feed, and to the main operators serving Suceava. Until then coaches stay demo; do not scrape.
-5. **Mixed state is the realistic MVP:** flights near-live, trains scheduled (or live if CFR agrees), coaches demo. Every card must show its own source and whether the time is scheduled or estimated.
+### Autogari.ro (not used)
+- Terms [§8.1](https://www.autogari.ro/Termeni): content may not be reproduced, copied or exploited commercially without prior written consent; §8.2-8.3: content and its structure are under copyright. No API or licence offered. Not requested, parsed or republished.
 
-Cost rough order (unverified, from vendor pages): AeroDataBox Pro about $8/month for 5,000 units. At one call every 10 minutes (~4,300 calls/month) it fits only if a call costs one unit, which is **not confirmed**.
+### Flights, live: AeroDataBox (not implemented)
+- Docs and pricing as previously confirmed: free Basic tier 400 units/month, non-commercial, attribution required; paid tiers from about $8/month; no resale on any plan. **Unverified**: SCV coverage, whether arrivals carry estimated/actual times, and units per call. The adapter slot exists and reports `awaitingCredentials`; a key set on the server does not enable anything yet.
 
-## Integration boundary (what exists now)
+### Trains, live: CFR/Infofer "Trenul meu" (not used)
+- The website shows real-time progress and delay per train, but there is no documented API and the terms are silent on automated access, which is not permission. Needs a written agreement with CFR Călători / ARF.
 
-- **Existing contract:** `TransportRepository.fetchUpcomingArrivals()` returns a `TransportSnapshot` of normalized `TransportService`s. The UI, the filters and the (still unconnected) `AlertEngine` depend only on that.
-- **Adapters never run in the app.** Provider keys, HTML/PDF/vendor-JSON parsing and polling belong on a backend. The app receives one normalized JSON document, parsed by `NormalizedArrivalsParser` (`features/transport/data/sources/`). Its rules, covered by tests on synthetic fixtures (`test/fixtures/normalized_arrivals_v1.json`):
-  - every timestamp needs an explicit offset (`Z` or `+02:00`) and is converted to UTC; a naive "18:40" is rejected;
-  - an estimated/actual time is rejected unless `dataQuality` is `estimated` or `live`, so a timetable can never appear as a live estimate;
-  - `fetchedAt` and each `lastUpdated` are required, so freshness is known;
-  - invalid services are rejected with a reason (not silently dropped); a malformed or unsupported payload becomes a safe `TransportFetchException`.
-- **Mapping wall-clock source times:** when a backend adapter reads "18:40" from a Romanian source it must use `BucharestTime.fromWallClock` (it handles the March gap and October overlap), then emit UTC.
-- **Config:** `ProviderConfig` accepts only a backend base URL, passed with `--dart-define=TRAVEL_ALERTS_API_BASE_URL=...`. It rejects credentials, query strings (where keys hide), fragments and plain http (except localhost / `10.0.2.2`), and never echoes the value in errors. Absent = mock only. **No provider key belongs in Flutter code or the repository.**
-- **Catalog:** `DataSourceCatalog` records each candidate with its honest status. Update it and this document together.
-- **Not built:** the HTTP client, the backend, and the wiring of `ProviderConfig` into app startup. They need a backend that does not exist yet, so nothing real is connected and nothing was faked.
+## How the pipeline is built
 
-### Before the first real source goes live
-1. Make the demo banner **per-service**: today `ArrivalsController.isMock` is true only when the snapshot is mock, so a mixed list (some real, some demo) would be mislabelled. Show the mock banner and badges based on the services actually shown.
-2. Add a `RemoteTransportRepository` that calls the backend and uses the parser.
-3. **Do not connect `AlertEngine` to a provider** until, for that provider, you know: what `lastUpdated` vs `sourceTimestamp` mean, how often it refreshes, how stale is too stale (the evaluator's 10-minute default may not fit), and that its "estimated" fields really are estimates. The evaluator already ignores timetable-only data for delay alerts and never reports schedule-only services as live.
+See [`backend/README.md`](../backend/README.md). In short: one adapter per source behind a common interface; a polite fetcher (identifying User-Agent, robots.txt, Crawl-delay, minimum 5 s between requests to a host, ETag/If-Modified-Since, back-off on 429/503, block on 401/403, no CAPTCHA or login handling); sources loaded one at a time so a failure stays local; a page whose structure changed is dropped and reported; the last good timetable is kept if a refresh fails and the status says so. The app receives one normalized JSON contract and validates it strictly (explicit UTC offsets, no estimate on scheduled data).
 
-## Actions that need you
+**Live check on 2026-10-21:** starting the backend against the four public pages (rail files served locally) returned HTTP 200 with 96 services and 7 source statuses; the app's parser accepted all 96 with none rejected. The first request took about 28 s because of the politeness delays; later requests read memory.
 
-1. **Flights:** create an AeroDataBox account (API.Market or RapidAPI), and tell me the plan you pick. Do not paste the key into chat or the repo; it will go into the backend's secret store.
-2. **Trains:** send the access request to CFR Călători / ARF (draft available on request). Tell me if I may download and inspect the open GTFS timetable.
-3. **Coaches:** send the written-consent request to BILETERIA SRL and identify which operators serve Suceava.
-4. **Decision:** is the app free, ad-free and community-run, or could it count as commercial? It decides which provider tiers you may use.
+## In the app
+
+- Demo data remains an explicit fallback: used when no backend URL is configured or the backend cannot be reached. Every demo service carries a "DATE DEMO" tag, and a list that mixes real and demo services is labelled per service.
+- Real timetable data is labelled "Orar programat, nu timp real" and every card shows its status as "Programat", never on time, delayed or arriving soon.
+- Settings shows each source with the status the backend reports and its message.
+- Timetable-only data is flagged stale only after 36 hours (live data after 10 minutes).
+
+## Alerts
+
+The alert engine is **not connected** to this data. It would never raise a delay alert from it (a test enforces this), and its arrival reminders on timetable data are marked as timetable-based. Before connecting it, decide per source what freshness and what "on time" can honestly mean: for timetable-only sources an arrival reminder is a promise about a schedule, not about the vehicle.
+
+## Needs you
+
+1. **Airport permission (flights and shuttle).** Both airport pages, and the winter PDF, are read without an explicit reuse licence. Ask the airport (contact page: [aeroportsuceava.ro/ro/contact/informatii](https://aeroportsuceava.ro/ro/contact/informatii)) for written permission to use the timetable data in a community app, and ask them to correct the transposed Thursday W4 3648 / RO 809 times in the winter PDF. Ask whether they can publish the timetable as a feed or in the page itself.
+2. **TASA permission (optional but advisable).** No terms are published; ask them to confirm use and, ideally, to publish operating days.
+3. **Rail files.** Say whether to also integrate other operators' yearly files (Regio Călători, Softrans and others on data.gov.ro): each needs a download approval from you, and the dataset URLs must be updated every December.
+4. **A host for the backend** (a small VM or container with HTTPS, with `pdftotext` installed) and a contact email for its User-Agent. Then build the app with `--dart-define=TRAVEL_ALERTS_API_BASE_URL=https://...`.
+5. **Live data, if wanted:** an AeroDataBox account (never put the key in chat or the repo) and a decision whether the app counts as commercial; a written agreement with CFR Călători / ARF for live train delays; written consent from BILETERIA SRL (Autogari.ro) or operator feeds for more coaches; an agreement with Tarsin.

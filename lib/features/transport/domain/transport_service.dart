@@ -94,7 +94,13 @@ class TransportService {
   ArrivalStatus statusAt(DateTime now) {
     if (isCancelled) return ArrivalStatus.cancelled;
     if (actualArrival != null) return ArrivalStatus.arrived;
-    if (estimatedArrival == null) return ArrivalStatus.unknown;
+    if (estimatedArrival == null) {
+      // A timetable time: still ahead is "scheduled", already past without any
+      // confirmation is unknown. Never "on time" or "arriving soon".
+      return scheduledArrival.isAfter(now)
+          ? ArrivalStatus.scheduled
+          : ArrivalStatus.unknown;
+    }
     if (!estimatedArrival!.isAfter(now)) return ArrivalStatus.unknown;
     final delay = delayMinutes ?? 0;
     if (delay >= StatusRules.delayedFromMinutes) return ArrivalStatus.delayed;

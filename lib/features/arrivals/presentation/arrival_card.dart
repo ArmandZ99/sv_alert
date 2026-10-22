@@ -188,7 +188,9 @@ class ArrivalCard extends StatelessWidget {
                 children: [
                   _Tag(service.dataQuality.label),
                   if (service.source.isMock)
-                    const _Tag(Strings.mockBadge, highlight: true),
+                    const _Tag(Strings.mockBadge, highlight: true)
+                  else
+                    _Tag(service.source.name),
                 ],
               ),
             ],
@@ -256,6 +258,7 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 260),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: highlight ? AppColors.mockBackground : AppColors.background,
@@ -266,6 +269,8 @@ class _Tag extends StatelessWidget {
       ),
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 10.5,
           fontWeight: FontWeight.w800,

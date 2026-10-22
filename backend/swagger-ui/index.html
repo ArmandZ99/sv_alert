@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Suceava Travel Alerts API</title>
+    <!--
+      Local Swagger UI for backend/openapi.yaml. Serve the backend folder with
+      a static server (see docs/LOCAL_TESTING.md) and open /swagger-ui/.
+      Swagger UI itself is loaded from a CDN at a pinned version, so this page
+      needs internet access for those two files only; the API is your own
+      backend on this machine.
+    -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css"
+    />
+    <style>
+      body { margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+    <script>
+      window.onload = function () {
+        window.ui = SwaggerUIBundle({
+          url: '../openapi.yaml',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          tryItOutEnabled: true,
+          docExpansion: 'list',
+        });
+      };
+    </script>
+  </body>
+</html>

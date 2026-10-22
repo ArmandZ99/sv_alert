@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/clock.dart';
+import '../../transport/data/sources/source_status.dart';
 import '../../transport/data/transport_repository.dart';
 import '../../transport/domain/arrival_status.dart';
 import '../../dashboard/domain/demand_overview.dart';
@@ -17,13 +18,18 @@ class ArrivalsController extends ChangeNotifier {
     required this.repository,
     this.clock = systemClock,
     this.staleAfter = const Duration(minutes: 10),
+    this.scheduledStaleAfter = const Duration(hours: 36),
   });
 
   final TransportRepository repository;
   final Clock clock;
 
-  /// Data older than this is flagged as stale.
+  /// Live or estimated data older than this is flagged as stale.
   final Duration staleAfter;
+
+  /// Timetable-only data changes rarely (the backend refreshes it every few
+  /// hours), so it is flagged as stale only after this much longer time.
+  final Duration scheduledStaleAfter;
 
   LoadStatus _status = LoadStatus.loading;
   TransportSnapshot? _snapshot;
@@ -43,12 +49,31 @@ class ArrivalsController extends ChangeNotifier {
 
   DateTime get now => clock();
 
-  bool get isMock => _snapshot?.isMock ?? false;
+  /// True when the list contains demo data.
+  bool get hasMock => allServices.any((s) => s.source.isMock);
+
+  /// True when the list contains data from a real source.
+  bool get hasReal => allServices.any((s) => !s.source.isMock);
+
+  /// True when every service shown is demo data.
+  bool get isMock => hasMock && !hasReal;
+
+  /// True when any service has an estimated or actual time. Timetable-only
+  /// lists have none, and their times must not be read as live.
+  bool get hasLiveTimes => allServices.any((s) => !s.isScheduleOnly);
+
+  /// Per-source status from the backend (empty for demo data).
+  List<SourceStatusInfo> get sources => _snapshot?.sources ?? const [];
+
+  /// Set when real data failed to load and demo data is shown instead.
+  String? get degradedReason => _snapshot?.degradedReason;
 
   Duration? get dataAge =>
       _snapshot == null ? null : now.difference(_snapshot!.fetchedAt);
 
-  bool get isStale => dataAge != null && dataAge! > staleAfter;
+  bool get isStale =>
+      dataAge != null &&
+      dataAge! > (hasLiveTimes ? staleAfter : scheduledStaleAfter);
 
   List<TransportService> get allServices => _snapshot?.services ?? const [];
 

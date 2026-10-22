@@ -1,10 +1,15 @@
 import '../../domain/transport_type.dart';
 
-/// Where a candidate source stands. Nothing is [verified] until an adapter
-/// exists, is authorized and has been checked against real responses.
+/// Where a candidate source stands. Nothing is [verified] until it is
+/// authorized, implemented and checked against real data.
 enum IntegrationStatus {
   /// Authorized, implemented and checked against real data.
   verified,
+
+  /// Implemented in the backend from a public, openly published source and
+  /// working on real data, but timetable-only. Not [verified]: for pages
+  /// without an explicit reuse licence, permission is still unconfirmed.
+  implementedScheduledOnly,
 
   /// Technically accessible, but an account, key or subscription is needed.
   awaitingCredentials,
@@ -12,8 +17,7 @@ enum IntegrationStatus {
   /// Reuse needs written permission or a partnership first.
   awaitingPermission,
 
-  /// Looks usable (for example an open licence) but origin, coverage or
-  /// freshness have not been confirmed yet.
+  /// Looks usable but origin, coverage or freshness are not confirmed yet.
   awaitingVerification,
 
   /// No usable access method found.
@@ -63,11 +67,14 @@ abstract final class DataSourceCatalog {
       name: 'Aeroportul Suceava - orar publicat',
       type: TransportType.flight,
       officialUrl: 'https://aeroportsuceava.ro/ro/2016-01-29-10-35-08',
-      status: IntegrationStatus.awaitingPermission,
+      status: IntegrationStatus.implementedScheduledOnly,
       nature: SourceNature.scheduledOnly,
       notes:
-          'Seasonal timetable as web tables and PDFs. No live status, no API or '
-          'feed, no terms of use found; footer says all rights reserved.',
+          'Backend reads the weekly arrival tables in the page (one season, with '
+          'its stated period) and the linked arrivals PDF for the next season, '
+          'each within its own period. No live status, no API; the page says '
+          'all rights reserved and publishes no terms, so reuse permission is '
+          'unconfirmed. The PDF needs pdftotext on the backend host.',
     ),
     DataSourceInfo(
       id: 'aerodatabox',
@@ -77,9 +84,22 @@ abstract final class DataSourceCatalog {
       status: IntegrationStatus.awaitingCredentials,
       nature: SourceNature.unknown,
       notes:
-          'Commercial API with airport arrivals (FIDS). Pricing and licence '
-          'terms confirmed; field-level docs and SCV coverage not verified. '
-          'Key must live on a backend, never in the app.',
+          'Optional live provider, not implemented. Needs an account; SCV '
+          'coverage, estimated-time fields and terms must be verified first. '
+          'The key must live on the backend, never in the app.',
+    ),
+    DataSourceInfo(
+      id: 'ro-rail-open-timetable',
+      name: 'Orar tren - date deschise (data.gov.ro)',
+      type: TransportType.train,
+      officialUrl:
+          'https://data.gov.ro/dataset/mers-tren-sntfc-cfr-calatori-s-a',
+      status: IntegrationStatus.implementedScheduledOnly,
+      nature: SourceNature.scheduledOnly,
+      notes:
+          'Official annual timetable (OGL-ROU-1.0), valid 14 Dec 2025 - 12 Dec '
+          '2026; covers Suceava, Suceava Nord and Suceava Vest. Static: no '
+          'delays. Dataset URLs change every December.',
     ),
     DataSourceInfo(
       id: 'cfr-trenul-meu',
@@ -94,16 +114,38 @@ abstract final class DataSourceCatalog {
           'permission. Needs written agreement.',
     ),
     DataSourceInfo(
-      id: 'ro-railway-gtfs',
-      name: 'Orar tren - date deschise Informatică Feroviară (GTFS)',
-      type: TransportType.train,
-      officialUrl: 'https://mobilitydatabase.org/feeds/gtfs/mdb-3236',
-      status: IntegrationStatus.awaitingVerification,
+      id: 'tasa-suceava',
+      name: 'TASA Suceava - trasee',
+      type: TransportType.coach,
+      officialUrl: 'https://www.tasasuceava.ro/trasee/',
+      status: IntegrationStatus.implementedScheduledOnly,
       nature: SourceNature.scheduledOnly,
       notes:
-          'Open licence (OGL-ROU-1.0) timetable, but only seen through a '
-          'third-party conversion. Origin, Suceava coverage and download '
-          'authorization not yet verified. Timetable only, no delays.',
+          'Operator route page, read by the backend (robots.txt allows it). '
+          'No validity period or operating days published: assumed daily.',
+    ),
+    DataSourceInfo(
+      id: 'scv-airport-transfer',
+      name: 'Transfer Cernăuți - Suceava - Aeroport',
+      type: TransportType.coach,
+      officialUrl:
+          'https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport',
+      status: IntegrationStatus.implementedScheduledOnly,
+      nature: SourceNature.scheduledOnly,
+      notes:
+          'Shuttle timetable on the airport site. No validity end published; '
+          'which of the two operators runs each trip is not stated.',
+    ),
+    DataSourceInfo(
+      id: 'tarsin',
+      name: 'Tarsin - orar autocare',
+      type: TransportType.coach,
+      officialUrl: 'https://www.tarsin.ro/ro/routes/radauti-suceava',
+      status: IntegrationStatus.unavailable,
+      nature: SourceNature.unknown,
+      notes:
+          'Timetable loads from a JavaScript app; public pages carry none. '
+          'Using its internal API is not done. Needs an agreement or feed.',
     ),
     DataSourceInfo(
       id: 'autogari-sosiri',
@@ -113,19 +155,8 @@ abstract final class DataSourceCatalog {
       status: IntegrationStatus.awaitingPermission,
       nature: SourceNature.scheduledOnly,
       notes:
-          'Timetable-style listing. Terms section 8.1 forbids copying content '
-          'without prior written consent; no API or licence offered.',
-    ),
-    DataSourceInfo(
-      id: 'coach-operator-feeds',
-      name: 'Feeduri directe ale operatorilor de autocare',
-      type: TransportType.coach,
-      officialUrl: 'https://www.autogari.ro/CompaniiTransport',
-      status: IntegrationStatus.unavailable,
-      nature: SourceNature.unknown,
-      notes:
-          'No operator feed or API found. Would need individual agreements '
-          'with each operator serving Suceava.',
+          'Terms section 8.1 forbids copying content without prior written '
+          'consent; no API or licence offered. Not used.',
     ),
   ];
 
@@ -135,4 +166,11 @@ abstract final class DataSourceCatalog {
   /// Whether any source for [type] is verified and may feed real data.
   static bool hasVerifiedSource(TransportType type) =>
       forType(type).any((s) => s.status == IntegrationStatus.verified);
+
+  /// Whether any source for [type] is implemented (timetable-only or better).
+  static bool hasImplementedSource(TransportType type) => forType(type).any(
+    (s) =>
+        s.status == IntegrationStatus.verified ||
+        s.status == IntegrationStatus.implementedScheduledOnly,
+  );
 }

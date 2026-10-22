@@ -1,4 +1,5 @@
 import '../domain/transport_service.dart';
+import 'sources/source_status.dart';
 
 /// Result of one fetch from a transport source.
 class TransportSnapshot {
@@ -6,6 +7,8 @@ class TransportSnapshot {
     required this.services,
     required this.fetchedAt,
     required this.isMock,
+    this.sources = const [],
+    this.degradedReason,
   });
 
   final List<TransportService> services;
@@ -13,6 +16,13 @@ class TransportSnapshot {
 
   /// True when the data is generated demo data, not a real source.
   final bool isMock;
+
+  /// Per-source status when the data comes from the backend; empty otherwise.
+  final List<SourceStatusInfo> sources;
+
+  /// Set when real data could not be loaded and this snapshot is the demo
+  /// fallback. Safe to show to users.
+  final String? degradedReason;
 }
 
 class TransportFetchException implements Exception {

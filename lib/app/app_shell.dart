@@ -52,7 +52,7 @@ class _AppShellState extends State<AppShell> {
         onOpenSettings: () => setState(() => _tab = 2),
       ),
       ArrivalsPage(arrivals: widget.arrivals, preferences: widget.preferences),
-      SettingsPage(preferences: widget.preferences),
+      SettingsPage(preferences: widget.preferences, arrivals: widget.arrivals),
     ];
 
     return Scaffold(

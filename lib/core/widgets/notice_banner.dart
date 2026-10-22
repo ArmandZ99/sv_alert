@@ -20,6 +20,20 @@ class NoticeBanner extends StatelessWidget {
       icon = Icons.science_outlined,
       action = null;
 
+  /// Real and demo services in the same list.
+  const NoticeBanner.mixed({super.key})
+    : title = Strings.mixedBannerTitle,
+      body = Strings.mixedBannerBody,
+      icon = Icons.science_outlined,
+      action = null;
+
+  /// Real data that is a timetable only: no live estimates or delays.
+  const NoticeBanner.scheduledOnly({super.key})
+    : title = Strings.scheduledBannerTitle,
+      body = Strings.scheduledBannerBody,
+      icon = Icons.event_note_outlined,
+      action = null;
+
   final String title;
   final String body;
   final IconData icon;

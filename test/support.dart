@@ -23,6 +23,7 @@ TransportService makeService({
   int? actual,
   bool cancelled = false,
   bool mock = false,
+  String sourceName = 'test',
   DataQuality quality = DataQuality.estimated,
   DateTime? base,
 }) {
@@ -31,7 +32,7 @@ TransportService makeService({
   return TransportService(
     id: id,
     type: type,
-    source: SourceInfo(name: 'test', isMock: mock),
+    source: SourceInfo(name: sourceName, isMock: mock),
     serviceNumber: number,
     operatorName: operatorName,
     routeStops: stops,

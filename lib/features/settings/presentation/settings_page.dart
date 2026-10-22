@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../arrivals/presentation/arrivals_controller.dart';
 import 'data_sources_card.dart';
 
 import '../domain/notification_preferences.dart';
@@ -12,14 +13,19 @@ import '../../../core/widgets/notice_banner.dart';
 import '../../transport/presentation/styles.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({required this.preferences, super.key});
+  const SettingsPage({
+    required this.preferences,
+    required this.arrivals,
+    super.key,
+  });
 
   final PreferencesController preferences;
+  final ArrivalsController arrivals;
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: preferences,
+      listenable: Listenable.merge([preferences, arrivals]),
       builder: (context, _) {
         final prefs = preferences.value;
         final controlsEnabled = prefs.enabled;
@@ -225,7 +231,7 @@ class SettingsPage extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             const _SectionTitle(Strings.sectionDataSources),
-            const DataSourcesCard(),
+            DataSourcesCard(live: arrivals.sources),
             const SizedBox(height: 18),
             const _SectionTitle(Strings.sectionAbout),
             const Card(

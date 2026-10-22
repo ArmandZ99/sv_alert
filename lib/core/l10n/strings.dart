@@ -14,6 +14,16 @@ abstract final class Strings {
   static const mockBannerBody =
       'Cursele, orele și întârzierile sunt exemple generate local. Nu provin '
       'din surse în timp real și nu reflectă situația reală din Suceava.';
+  static const mixedBannerTitle = 'Date reale și demonstrative';
+  static const mixedBannerBody =
+      'Unele curse sunt reale, altele sunt exemple generate local. Cele '
+      'demonstrative sunt marcate DATE DEMO.';
+  static const scheduledBannerTitle = 'Orar programat, nu timp real';
+  static const scheduledBannerBody =
+      'Orele sunt cele din orarele publicate de operatori. Întârzierile, '
+      'anulările și estimările nu sunt disponibile; o cursă poate sosi mai '
+      'devreme sau mai târziu.';
+  static const degradedTitle = 'Date reale indisponibile';
   static const sampleSuffix = 'exemplu';
   static const independentNotice =
       'Aplicație comunitară independentă. Nu este dezvoltată, susținută sau '
@@ -66,6 +76,7 @@ abstract final class Strings {
   static const noValue = '—';
 
   // Status
+  static const statusScheduled = 'Programat';
   static const statusOnTime = 'La timp';
   static const statusDelayed = 'Întârziat';
   static const statusArrivingSoon = 'Sosește curând';
@@ -144,6 +155,12 @@ abstract final class Strings {
   static const dataSourcesIntro =
       'Momentan toate datele afișate sunt demonstrative. Nicio sursă reală nu '
       'este conectată; mai jos este starea surselor analizate.';
+  static const dataSourcesLiveIntro =
+      'Stare raportată de serverul de date. Orarele sunt programate, nu în '
+      'timp real, cu excepția surselor marcate „Conectat”.';
+  static const sourceConnected = 'Conectat (timp real)';
+  static const sourceScheduledOnlyLive = 'Doar orar programat';
+  static const sourceImplementedScheduled = 'Implementată în server, doar orar';
   static const sourceVerified = 'Verificată';
   static const sourceAwaitingCredentials = 'Necesită cont sau cheie API';
   static const sourceAwaitingPermission = 'Necesită permisiune scrisă';

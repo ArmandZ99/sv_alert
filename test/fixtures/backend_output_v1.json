@@ -1,0 +1,440 @@
+{
+  "schemaVersion": 1,
+  "fetchedAt": "2026-10-21T09:00:00.000Z",
+  "generatedAt": "2026-10-21T09:00:00.000Z",
+  "window": {
+    "from": "2026-10-21T00:00:00.000Z",
+    "to": "2026-10-22T00:00:00.000Z"
+  },
+  "services": [
+    {
+      "id": "tasa-suceava:tasa-orasul-d-orasul-e:2026-10-21:autogara-noua-tasa-suceava:0650",
+      "type": "coach",
+      "source": {
+        "name": "TASA Suceava - trasee",
+        "url": "https://www.tasasuceava.ro/trasee/",
+        "isMock": false
+      },
+      "serviceNumber": "TASA Orasul D – Orasul E",
+      "operatorName": "TASA (Transporturi Auto Suceava)",
+      "routeStops": [
+        "Orasul D",
+        "Suceava",
+        "Orasul F",
+        "Orasul E"
+      ],
+      "arrivalPoint": "Autogara Noua TASA, Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T03:50:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "scv-airport-transfer:transfer-cern-u-i-suceava-aeroport-ruta-1:2026-10-21:autogara-suceava:0750",
+      "type": "coach",
+      "source": {
+        "name": "Transfer Cernăuți - Suceava - Aeroport",
+        "url": "https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport",
+        "isMock": false
+      },
+      "serviceNumber": "Transfer Cernăuți – Suceava – Aeroport (Ruta 1)",
+      "operatorName": "NICOLMIT S.R.L. / PP \"NOV TRABS-AVTO\" (operatorul fiecărei curse nu este precizat)",
+      "routeStops": [
+        "Town A",
+        "Border",
+        "Suceava",
+        "Salcea"
+      ],
+      "arrivalPoint": "Autogara Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T04:50:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "scv-airport-transfer:transfer-cern-u-i-suceava-aeroport-ruta-1:2026-10-21:aeroportul-suceava-salcea:0830",
+      "type": "coach",
+      "source": {
+        "name": "Transfer Cernăuți - Suceava - Aeroport",
+        "url": "https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport",
+        "isMock": false
+      },
+      "serviceNumber": "Transfer Cernăuți – Suceava – Aeroport (Ruta 1)",
+      "operatorName": "NICOLMIT S.R.L. / PP \"NOV TRABS-AVTO\" (operatorul fiecărei curse nu este precizat)",
+      "routeStops": [
+        "Town A",
+        "Border",
+        "Suceava",
+        "Salcea"
+      ],
+      "arrivalPoint": "Aeroportul Suceava (Salcea)",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T05:30:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "scv-airport-timetable:xx-100:2026-10-21:aeroportul-suceava-scv:0845",
+      "type": "flight",
+      "source": {
+        "name": "Aeroportul Suceava - orar publicat",
+        "url": "https://aeroportsuceava.ro/ro/2016-01-29-10-35-08",
+        "isMock": false
+      },
+      "serviceNumber": "XX 100",
+      "operatorName": "Example Air",
+      "routeStops": [
+        "Alpha City (AAA)",
+        "Aeroportul Suceava (SCV)"
+      ],
+      "arrivalPoint": "Aeroportul Suceava (SCV)",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T05:45:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "scv-airport-transfer:transfer-aeroport-suceava-cern-u-i-ruta-1:2026-10-21:autogara-suceava:1230",
+      "type": "coach",
+      "source": {
+        "name": "Transfer Cernăuți - Suceava - Aeroport",
+        "url": "https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport",
+        "isMock": false
+      },
+      "serviceNumber": "Transfer Aeroport – Suceava – Cernăuți (Ruta 1)",
+      "operatorName": "NICOLMIT S.R.L. / PP \"NOV TRABS-AVTO\" (operatorul fiecărei curse nu este precizat)",
+      "routeStops": [
+        "Salcea",
+        "Suceava",
+        "Border",
+        "Town A"
+      ],
+      "arrivalPoint": "Autogara Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T09:30:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "ro-rail-open-timetable:ir-9005:2026-10-21:gara-suceava:1650",
+      "type": "train",
+      "source": {
+        "name": "Orar tren - date deschise (data.gov.ro)",
+        "url": "https://example.org/dataset",
+        "isMock": false
+      },
+      "serviceNumber": "IR 9005",
+      "operatorName": "CFR Călători",
+      "routeStops": [
+        "Kappa",
+        "Suceava",
+        "Lambda"
+      ],
+      "arrivalPoint": "Gara Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T13:50:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": "2025-12-03T00:00:00.000Z"
+    },
+    {
+      "id": "scv-airport-transfer:transfer-cern-u-i-suceava-aeroport-ruta-2:2026-10-21:autogara-suceava:1650",
+      "type": "coach",
+      "source": {
+        "name": "Transfer Cernăuți - Suceava - Aeroport",
+        "url": "https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport",
+        "isMock": false
+      },
+      "serviceNumber": "Transfer Cernăuți – Suceava – Aeroport (Ruta 2)",
+      "operatorName": "NICOLMIT S.R.L. / PP \"NOV TRABS-AVTO\" (operatorul fiecărei curse nu este precizat)",
+      "routeStops": [
+        "Town A",
+        "Suceava",
+        "Salcea"
+      ],
+      "arrivalPoint": "Autogara Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T13:50:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "scv-airport-transfer:transfer-cern-u-i-suceava-aeroport-ruta-2:2026-10-21:aeroportul-suceava-salcea:1730",
+      "type": "coach",
+      "source": {
+        "name": "Transfer Cernăuți - Suceava - Aeroport",
+        "url": "https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport",
+        "isMock": false
+      },
+      "serviceNumber": "Transfer Cernăuți – Suceava – Aeroport (Ruta 2)",
+      "operatorName": "NICOLMIT S.R.L. / PP \"NOV TRABS-AVTO\" (operatorul fiecărei curse nu este precizat)",
+      "routeStops": [
+        "Town A",
+        "Suceava",
+        "Salcea"
+      ],
+      "arrivalPoint": "Aeroportul Suceava (Salcea)",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T14:30:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "tasa-suceava:tasa-ora-ul-a-suceava:2026-10-21:autogara-nou-tasa-suceava:1745",
+      "type": "coach",
+      "source": {
+        "name": "TASA Suceava - trasee",
+        "url": "https://www.tasasuceava.ro/trasee/",
+        "isMock": false
+      },
+      "serviceNumber": "TASA Orașul A – Suceava",
+      "operatorName": "TASA (Transporturi Auto Suceava)",
+      "routeStops": [
+        "Orașul A",
+        "Suceava"
+      ],
+      "arrivalPoint": "Autogara Nouă TASA, Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T14:45:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "ro-rail-open-timetable:ir-9001:2026-10-21:gara-suceava:2055",
+      "type": "train",
+      "source": {
+        "name": "Orar tren - date deschise (data.gov.ro)",
+        "url": "https://example.org/dataset",
+        "isMock": false
+      },
+      "serviceNumber": "IR 9001",
+      "operatorName": "CFR Călători",
+      "routeStops": [
+        "Alpha Nord",
+        "Midway",
+        "Beta",
+        "Suceava",
+        "Suceava Nord"
+      ],
+      "arrivalPoint": "Gara Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T17:55:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": "2025-12-03T00:00:00.000Z"
+    },
+    {
+      "id": "ro-rail-open-timetable:ir-9001:2026-10-21:gara-suceava-nord:2106",
+      "type": "train",
+      "source": {
+        "name": "Orar tren - date deschise (data.gov.ro)",
+        "url": "https://example.org/dataset",
+        "isMock": false
+      },
+      "serviceNumber": "IR 9001",
+      "operatorName": "CFR Călători",
+      "routeStops": [
+        "Alpha Nord",
+        "Midway",
+        "Beta",
+        "Suceava",
+        "Suceava Nord"
+      ],
+      "arrivalPoint": "Gara Suceava Nord",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T18:06:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": "2025-12-03T00:00:00.000Z"
+    },
+    {
+      "id": "tasa-suceava:tasa-ora-ul-a-suceava:2026-10-21:autogara-nou-tasa-suceava:2330",
+      "type": "coach",
+      "source": {
+        "name": "TASA Suceava - trasee",
+        "url": "https://www.tasasuceava.ro/trasee/",
+        "isMock": false
+      },
+      "serviceNumber": "TASA Orașul A – Suceava",
+      "operatorName": "TASA (Transporturi Auto Suceava)",
+      "routeStops": [
+        "Orașul A",
+        "Suceava"
+      ],
+      "arrivalPoint": "Autogara Nouă TASA, Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T20:30:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": null
+    },
+    {
+      "id": "ro-rail-open-timetable:ir-n-9006:2026-10-21:gara-suceava:0010",
+      "type": "train",
+      "source": {
+        "name": "Orar tren - date deschise (data.gov.ro)",
+        "url": "https://example.org/dataset",
+        "isMock": false
+      },
+      "serviceNumber": "IR-N 9006",
+      "operatorName": "CFR Călători",
+      "routeStops": [
+        "Mu",
+        "Suceava"
+      ],
+      "arrivalPoint": "Gara Suceava",
+      "serviceDate": "2026-10-21",
+      "scheduledArrival": "2026-10-21T21:10:00.000Z",
+      "estimatedArrival": null,
+      "actualArrival": null,
+      "isCancelled": false,
+      "dataQuality": "scheduled",
+      "lastUpdated": "2026-10-21T09:00:00.000Z",
+      "sourceTimestamp": "2025-12-03T00:00:00.000Z"
+    }
+  ],
+  "sources": [
+    {
+      "id": "scv-airport-timetable",
+      "name": "Aeroportul Suceava - orar publicat",
+      "types": [
+        "flight"
+      ],
+      "url": "https://aeroportsuceava.ro/ro/2016-01-29-10-35-08",
+      "status": "scheduledOnly",
+      "message": "Orar programat, perioade: 29.03.2026-24.10.2026 (pagina), 25.10.2026-27.03.2027 (PDF). Fără estimări sau întârzieri. 4 rânduri din PDF-ul 25.10.2026-27.03.2027 au fost respinse: XX 102 din Beta Town (BBB) (vineri): durata 1 h 10 min diferă de cea obișnuită pe ruta Beta Town (BBB) (5 h 10 min); posibilă eroare în sursă; XX 200 din Alpha City (AAA) (vineri): durata 5 h 10 min diferă de cea obișnuită pe ruta Alpha City (AAA) (3 h 20 min); posibilă eroare în sursă; XX 130 din Zeta (ZZZ) (sâmbătă): observație necunoscută «Zbor suspendat temporar»; XX 140 din Eta (HHH) (sâmbătă): intervalul de date este gol.",
+      "fetchedAt": "2026-10-21T09:00:00.000Z",
+      "validFrom": "2026-03-29",
+      "validTo": "2027-03-27",
+      "serviceCount": 1
+    },
+    {
+      "id": "scv-airport-transfer",
+      "name": "Transfer Cernăuți - Suceava - Aeroport",
+      "types": [
+        "coach"
+      ],
+      "url": "https://www.aeroportsuceava.ro/ro/info-pasageri/transfer-aeroport",
+      "status": "scheduledOnly",
+      "message": "Orar programat publicat de aeroport. Pagina nu are dată de valabilitate; se presupune zilnic. Verificați la dispeceratul operatorului.",
+      "fetchedAt": "2026-10-21T09:00:00.000Z",
+      "validFrom": null,
+      "validTo": null,
+      "serviceCount": 5
+    },
+    {
+      "id": "tasa-suceava",
+      "name": "TASA Suceava - trasee",
+      "types": [
+        "coach"
+      ],
+      "url": "https://www.tasasuceava.ro/trasee/",
+      "status": "scheduledOnly",
+      "message": "Orar programat publicat de operator. Pagina nu precizează zilele de circulație sau perioada de valabilitate: se presupune zilnic. Opririle intermediare apar doar unde operatorul le publică.",
+      "fetchedAt": "2026-10-21T09:00:00.000Z",
+      "validFrom": null,
+      "validTo": null,
+      "serviceCount": 3
+    },
+    {
+      "id": "ro-rail-open-timetable",
+      "name": "Orar tren - date deschise (data.gov.ro)",
+      "types": [
+        "train"
+      ],
+      "url": "https://data.gov.ro/dataset/mers-tren-sntfc-cfr-calatori-s-a",
+      "status": "scheduledOnly",
+      "message": "Orar anual programat (date deschise OGL-ROU-1.0), fără întârzieri. 2 intrări de calendar nerecunoscute au fost omise. Doar zilele săptămânii sunt interpretate; regulile pentru sărbători nu.",
+      "fetchedAt": "2026-10-21T09:00:00.000Z",
+      "validFrom": "2025-12-14",
+      "validTo": "2026-12-12",
+      "serviceCount": 4
+    },
+    {
+      "id": "aerodatabox",
+      "name": "AeroDataBox - zboruri live",
+      "types": [
+        "flight"
+      ],
+      "url": "https://doc.aerodatabox.com/",
+      "status": "awaitingCredentials",
+      "message": "Necesită un cont și o cheie API (variabila AERODATABOX_API_KEY pe server). Nu este implementat până la verificarea acoperirii SCV.",
+      "fetchedAt": null,
+      "validFrom": null,
+      "validTo": null,
+      "serviceCount": 0
+    },
+    {
+      "id": "tarsin",
+      "name": "Tarsin - orar autocare",
+      "types": [
+        "coach"
+      ],
+      "url": "https://www.tarsin.ro/ro/routes/radauti-suceava",
+      "status": "unavailable",
+      "message": "Orarul se încarcă dintr-o aplicație JavaScript; paginile publice nu conțin orarul și nu se folosesc API-uri interne nedocumentate. Necesită acord sau un feed de la operator.",
+      "fetchedAt": null,
+      "validFrom": null,
+      "validTo": null,
+      "serviceCount": 0
+    },
+    {
+      "id": "autogari-sosiri",
+      "name": "Autogari.ro - Sosiri în Suceava",
+      "types": [
+        "coach"
+      ],
+      "url": "https://www.autogari.ro/Suceava/Sosiri",
+      "status": "unavailable",
+      "message": "Termenii site-ului interzic copierea conținutului fără acord scris prealabil (§8.1); nu este folosit.",
+      "fetchedAt": null,
+      "validFrom": null,
+      "validTo": null,
+      "serviceCount": 0
+    }
+  ]
+}

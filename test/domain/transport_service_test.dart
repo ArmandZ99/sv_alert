@@ -53,11 +53,30 @@ void main() {
       );
     });
 
-    test('schedule-only services are unknown, never on time', () {
+    test('schedule-only services ahead are "scheduled", never on time', () {
       final service = makeService(scheduled: 5, quality: DataQuality.scheduled);
       expect(service.isScheduleOnly, isTrue);
+      expect(service.statusAt(testNow), ArrivalStatus.scheduled);
+    });
+
+    test('a schedule-only time that has passed is unknown, not arrived', () {
+      final service = makeService(
+        scheduled: -5,
+        quality: DataQuality.scheduled,
+      );
       expect(service.statusAt(testNow), ArrivalStatus.unknown);
     });
+
+    test(
+      'a schedule-only service is never arriving soon, even a minute away',
+      () {
+        final service = makeService(
+          scheduled: 1,
+          quality: DataQuality.scheduled,
+        );
+        expect(service.statusAt(testNow), ArrivalStatus.scheduled);
+      },
+    );
 
     test(
       'estimate in the past without confirmation is unknown, not arrived',

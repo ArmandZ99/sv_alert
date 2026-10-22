@@ -1,8 +1,13 @@
 # Architecture notes
 
-## Status (Phase 1 — foundation and UI)
+## Status
 
-The app is a Flutter-only client that runs on **explicitly labelled mock data**. There is no backend, login, live transport integration or push notification delivery. Notification preferences are saved locally with `shared_preferences` and loaded at startup.
+Two parts:
+
+* **Flutter app** (`lib/`): shows arrivals for flights, trains and coaches. With no backend configured it runs on **explicitly labelled demo data**. With `--dart-define=TRAVEL_ALERTS_API_BASE_URL=...` it shows **real, timetable-only data** from the backend and falls back to the demo data (labelled, with the reason) if the backend cannot be reached. Notification preferences are saved locally.
+* **Ingestion backend** (`backend/`, plain Dart): fetches the public timetables that may be used, normalizes them and serves one JSON contract. Details in `backend/README.md`.
+
+There is no live (real-time) source connected, no Firebase, no push delivery, and the alert engine is not connected to any provider.
 
 ## Structure (`lib/`)
 
@@ -12,7 +17,7 @@ Feature-oriented; each feature keeps its own `domain/` (pure Dart), `data/` and 
 | --- | --- |
 | `app/` | `SuceavaPulseApp` (wiring of controllers) and `AppShell` (bottom navigation). |
 | `core/` | `Clock`, `BucharestTime` (all time-zone logic), theme, Romanian strings and formatters, shared widgets (notice banner, loading/message views). |
-| `features/transport/` | Shared model (plus `data/sources/`: source catalog, backend config validation, normalized-JSON parser; see `docs/DATA_SOURCE_FEASIBILITY.md`): `TransportService`, `TransportType`, `ArrivalStatus`, `DataQuality`; `TransportRepository` + `MockTransportRepository`; status/type styling and `StatusBadge`. |
+| `features/transport/` | Shared model (plus `data/`: `RemoteTransportRepository` and the demo `FallbackTransportRepository`, the repository factory, and `data/sources/`: source catalog, backend config validation, source status, normalized-JSON parser; see `docs/DATA_SOURCE_FEASIBILITY.md`): `TransportService`, `TransportType`, `ArrivalStatus`, `DataQuality`; `TransportRepository` + `MockTransportRepository`; status/type styling and `StatusBadge`. |
 | `features/arrivals/` | `ServiceFilter` (type + search), `ArrivalsController`, arrivals page, `ArrivalCard`, freshness/stale/error banners, service details sheet. |
 | `features/dashboard/` | `DemandOverview` heuristic, dashboard page, `DemandCard`. |
 | `features/settings/` | `NotificationPreferences` (+ validated JSON codec), `PreferencesStore` + `SharedPreferencesStore`, `PreferencesController`, settings page. |
@@ -36,14 +41,28 @@ State management is plain `ChangeNotifier` + `ListenableBuilder`, with no extra 
   - *Idempotency key*: `<service id>|<service date>|<kind>|<threshold>`, e.g. `ir1831|2026-10-21|arrivalReminder|15`. The date is explicit even if the id contains it; the threshold separates reminders; for delays it is the user's delay threshold.
 - **Persistent duplicate suppression** (`AlertEngine`): wraps the evaluator with a history of handled keys saved through `AlertHistoryStore` (`shared_preferences`, one JSON object `key -> ISO-8601 UTC`). Keys are recorded when an evaluation returns them, before any delivery, so delivery is at-most-once: a failure can lose an alert but never repeat one. Keys older than 2 days are pruned. If the history cannot be loaded it starts empty (an alert may repeat once); if it cannot be saved, the in-memory history still suppresses duplicates for the session (`lastSaveFailed`). The engine is not yet wired into the UI.
 
-## Real data (Phase 2)
+## Real data
 
-No real source is connected. `docs/DATA_SOURCE_FEASIBILITY.md` records what was verified for flights, trains and coaches, and what needs credentials or written permission. Provider adapters and keys belong on a backend; the app only parses one normalized JSON contract (`NormalizedArrivalsParser`). `AlertEngine` must stay disconnected from providers until their freshness and timestamp semantics are known.
+```
+public pages / official files
+        |  (robots.txt, throttled, cached)
+   backend adapters --> SchedulePatterns --> dated services --> GET /v1/arrivals
+                                                                   |
+   app: RemoteTransportRepository --> NormalizedArrivalsParser --> TransportSnapshot --> UI
+```
+
+* **Provider specifics stay in the backend**: HTML/XML parsing, URLs, polling, caching, politeness. The app never fetches or parses a source, and no provider key is ever in Flutter code or the repository (the only app setting is the backend base URL).
+* **The contract** (schema v1) is validated strictly by `NormalizedArrivalsParser`: every timestamp needs an explicit offset, an estimated/actual time is rejected on scheduled data, freshness fields are required, and invalid services are listed with a reason. `test/fixtures/backend_output_v1.json` is produced by the backend's end-to-end test and parsed by the app's tests, so both sides are checked against the same file.
+* **Seasons**: the airport publishes one season in HTML tables and the next as a linked PDF, so the flight adapter reads each season within its own period (never mixing or duplicating) and keeps serving a valid season if another cannot be read; details in the feasibility document.
+* **Per-service honesty**: each service carries its source name, link, `dataQuality` and `lastUpdated`. Services without an estimate get the status **Programat** (never on time, delayed or arriving soon). A list that mixes real and demo services is labelled per service (`DATE DEMO` tag); the banner depends on what is actually shown.
+* **Staleness**: live/estimated data is stale after 10 minutes, timetable-only data after 36 hours (the backend refreshes timetables every few hours).
+* **Android**: the main manifest now declares `INTERNET`; cleartext http is allowed in debug builds only (local backend from the emulator). Release builds accept https only.
+* `AlertEngine` must stay disconnected from providers until each provider's freshness and timestamp semantics are decided (see the feasibility document).
 
 ## Planned boundaries (not built yet)
 
-- **Transport providers:** one adapter per flight, rail or coach source. Each must document authorization, terms of use, refresh limits, actual fields, and whether its times are scheduled or live.
-- **Backend worker:** scheduled collection, normalization, source-health monitoring, delay comparison, idempotent notification events, retries and rate limits.
+- **Live providers:** an optional AeroDataBox adapter (slot exists, reports `awaitingCredentials`), and any CFR/Infofer live access, once credentials or written agreements exist.
+- **Backend, next steps:** persistence of fetched data, source-health monitoring and alerting, delay comparison (only once a live source exists), deployment (no host chosen yet).
 - **Notification delivery:** FCM or equivalent only after real backend processing exists. Local reminders from saved schedules cannot discover new delays while the app is closed.
 - A delivery layer that consumes `AlertEvent`s (calling `AlertEngine` from the backend or a background worker), plus migration of `l10n/strings.dart` to `gen_l10n` when English is added.
 

@@ -1,26 +1,26 @@
+import '../../../../core/config/app_config.dart';
+
 /// Non-secret configuration for reaching real transport data.
 ///
 /// The app never talks to a data provider directly and never holds a provider
 /// key: keys stay on a backend. The only setting the app may receive is the
-/// base URL of that backend, passed at build time:
+/// base URL of that backend, which lives in [AppConfig] (default in code,
+/// optional `--dart-define=TRAVEL_ALERTS_API_BASE_URL=...` override).
 ///
-///     flutter run --dart-define=TRAVEL_ALERTS_API_BASE_URL=https://api.example.ro
-///
-/// If it is absent the app runs on explicit mock data.
+/// If it is empty, invalid or still the placeholder the app runs on explicit
+/// mock data.
 class ProviderConfig {
   const ProviderConfig({this.apiBaseUrl});
 
-  static const String environmentKey = 'TRAVEL_ALERTS_API_BASE_URL';
+  static const String environmentKey = AppConfig.apiBaseUrlKey;
 
   /// Backend that serves normalized arrivals, or null for mock data only.
   final Uri? apiBaseUrl;
 
   bool get hasBackend => apiBaseUrl != null;
 
-  /// Reads the build-time setting. Compile-time constant lookup, so it must be
-  /// spelled out here rather than done through a variable key.
-  static ConfigValidation fromEnvironment() =>
-      validate(const String.fromEnvironment('TRAVEL_ALERTS_API_BASE_URL'));
+  /// Reads the configured URL from [AppConfig].
+  static ConfigValidation fromEnvironment() => validate(AppConfig.apiBaseUrl);
 
   /// Validates a candidate base URL. Error messages never repeat the value, so
   /// a mistakenly pasted secret is not echoed into logs or the UI.
@@ -28,6 +28,15 @@ class ProviderConfig {
     final raw = rawBaseUrl?.trim() ?? '';
     if (raw.isEmpty) {
       return const ConfigValidation(config: ProviderConfig(), errors: []);
+    }
+    if (AppConfig.isPlaceholder(raw)) {
+      return const ConfigValidation(
+        config: ProviderConfig(),
+        errors: [
+          'The backend URL is still the placeholder; set it in '
+              'lib/core/config/app_config.dart after deploying.',
+        ],
+      );
     }
 
     final errors = <String>[];

@@ -1,4 +1,6 @@
 enum ArrivalStatus {
+  /// Only a timetable time is known: no live estimate either way.
+  scheduled,
   onTime,
   delayed,
   arrivingSoon,

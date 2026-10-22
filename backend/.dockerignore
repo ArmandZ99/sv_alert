@@ -1,0 +1,17 @@
+.dart_tool/
+.packages
+build/
+coverage/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.log
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore
+test/
+tool/
+swagger-ui/
