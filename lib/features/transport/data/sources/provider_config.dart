@@ -7,8 +7,7 @@ import '../../../../core/config/app_config.dart';
 /// base URL of that backend, which lives in [AppConfig] (default in code,
 /// optional `--dart-define=TRAVEL_ALERTS_API_BASE_URL=...` override).
 ///
-/// If it is empty, invalid or still the placeholder the app runs on explicit
-/// mock data.
+/// If it is empty or invalid the app runs on explicit mock data.
 class ProviderConfig {
   const ProviderConfig({this.apiBaseUrl});
 
@@ -28,15 +27,6 @@ class ProviderConfig {
     final raw = rawBaseUrl?.trim() ?? '';
     if (raw.isEmpty) {
       return const ConfigValidation(config: ProviderConfig(), errors: []);
-    }
-    if (AppConfig.isPlaceholder(raw)) {
-      return const ConfigValidation(
-        config: ProviderConfig(),
-        errors: [
-          'The backend URL is still the placeholder; set it in '
-              'lib/core/config/app_config.dart after deploying.',
-        ],
-      );
     }
 
     final errors = <String>[];

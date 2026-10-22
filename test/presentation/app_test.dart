@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
-import 'package:travelalerts/features/transport/data/remote_transport_repository.dart';
 import 'package:travelalerts/features/transport/data/sources/source_status.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:travelalerts/features/settings/data/preferences_store.dart';
@@ -60,10 +57,16 @@ void main() {
       'shows loading first, then mock banner, demand overview and arrivals',
       (tester) async {
         await pumpApp(tester, settle: false);
-        expect(find.text('Se încarcă sosirile…'), findsOneWidget);
+        expect(
+          find.text('Se conectează la server și se încarcă sosirile...'),
+          findsOneWidget,
+        );
 
         await tester.pumpAndSettle();
-        expect(find.text('Se încarcă sosirile…'), findsNothing);
+        expect(
+          find.text('Se conectează la server și se încarcă sosirile...'),
+          findsNothing,
+        );
         expect(find.text('Date demonstrative (mock)'), findsOneWidget);
         expect(find.text('Actualizat chiar acum'), findsOneWidget);
         expect(find.text('POTENȚIAL DE CERERE'), findsOneWidget);
@@ -561,28 +564,6 @@ void main() {
           reason: 'only the demo card',
         );
         expect(find.text('IR 1655'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'an unreachable backend falls back to labelled demo data and says why',
-      (tester) async {
-        final repo = FallbackTransportRepository(
-          primary: RemoteTransportRepository(
-            baseUrl: Uri.parse('https://api.example.ro'),
-            client: MockClient((_) async => http.Response('down', 503)),
-          ),
-          fallback: mockRepo(),
-        );
-        await pumpApp(tester, repository: repo);
-        expect(find.text('Date reale indisponibile'), findsOneWidget);
-        expect(
-          find.textContaining('se afișează date demonstrative'),
-          findsOneWidget,
-        );
-        expect(find.text('Date demonstrative (mock)'), findsOneWidget);
-        await openTab(tester, 'Sosiri');
-        expect(find.text('DATE DEMO'), findsWidgets);
       },
     );
 

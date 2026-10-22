@@ -176,8 +176,13 @@ void main() {
       expect(withKey.errors.join(), isNot(contains('SECRET123')));
     });
 
-    test('the build-time environment value is empty by default', () {
-      expect(ProviderConfig.fromEnvironment().config.hasBackend, isFalse);
+    test('without an override the central default backend is used', () {
+      final config = ProviderConfig.fromEnvironment().config;
+      expect(config.hasBackend, isTrue);
+      expect(
+        config.apiBaseUrl.toString(),
+        'https://suceava-travel-alerts-api.onrender.com',
+      );
     });
   });
 

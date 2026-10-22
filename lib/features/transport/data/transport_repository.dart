@@ -8,7 +8,6 @@ class TransportSnapshot {
     required this.fetchedAt,
     required this.isMock,
     this.sources = const [],
-    this.degradedReason,
   });
 
   final List<TransportService> services;
@@ -19,10 +18,6 @@ class TransportSnapshot {
 
   /// Per-source status when the data comes from the backend; empty otherwise.
   final List<SourceStatusInfo> sources;
-
-  /// Set when real data could not be loaded and this snapshot is the demo
-  /// fallback. Safe to show to users.
-  final String? degradedReason;
 }
 
 class TransportFetchException implements Exception {

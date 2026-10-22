@@ -84,7 +84,7 @@ class DashboardPage extends StatelessWidget {
                   actionLabel: Strings.retry,
                   onAction: arrivals.refresh,
                 )
-              : const LoadingView(),
+              : LoadingView(slow: arrivals.isSlowLoad),
         ),
       ];
     }
@@ -120,12 +120,18 @@ class DashboardPage extends StatelessWidget {
         ),
       ),
       if (preview.isEmpty)
-        const SliverToBoxAdapter(
-          child: MessageView(
-            icon: Icons.event_busy_outlined,
-            title: Strings.emptyTitle,
-            body: Strings.emptyBody,
-          ),
+        SliverToBoxAdapter(
+          child: arrivals.noSourceAvailable
+              ? const MessageView(
+                  icon: Icons.cloud_off_outlined,
+                  title: Strings.noSourcesTitle,
+                  body: Strings.noSourcesBody,
+                )
+              : const MessageView(
+                  icon: Icons.event_busy_outlined,
+                  title: Strings.emptyTitle,
+                  body: Strings.emptyBody,
+                ),
         )
       else
         SliverPadding(

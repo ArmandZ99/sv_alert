@@ -18,8 +18,6 @@ import 'package:travelalerts/features/transport/data/transport_repository_factor
 import 'package:travelalerts/features/transport/domain/arrival_status.dart';
 import 'package:travelalerts/features/transport/domain/transport_type.dart';
 
-import '../support.dart';
-
 /// Backend output produced by the backend's own end-to-end test from synthetic
 /// fixtures (backend/test/end_to_end_test.dart). Parsing it here ties the two
 /// halves of the contract together.
@@ -349,88 +347,241 @@ void main() {
     });
   });
 
+  group('deployed backend response (Render, 2026-10-22)', () {
+    // Captured from the live service: all sources reported "unavailable" there,
+    // so there are no services. The app must still accept it as real data.
+    final parsed = NormalizedArrivalsParser.parse(
+      jsonDecode(
+        File('test/fixtures/deployed_render_v1.json').readAsStringSync(),
+      ),
+    );
+
+    test('is accepted by the parser and is not demo data', () {
+      expect(parsed.rejected, isEmpty);
+      expect(parsed.snapshot.isMock, isFalse);
+      expect(parsed.snapshot.services, isEmpty);
+      expect(parsed.snapshot.sources, hasLength(7));
+    });
+
+    test('keeps each source status and message from the server', () {
+      final byId = {for (final s in parsed.snapshot.sources) s.id: s};
+      expect(
+        byId['ro-rail-open-timetable']!.connection,
+        SourceConnection.unavailable,
+      );
+      expect(byId['ro-rail-open-timetable']!.message, contains('robots.txt'));
+      expect(
+        byId['aerodatabox']!.connection,
+        SourceConnection.awaitingCredentials,
+      );
+    });
+  });
+
+  group('request window and diagnostics', () {
+    RemoteTransportRepository build(
+      MockClient c,
+      List<String> logs, {
+      Duration lookBehind = const Duration(minutes: 30),
+      Duration lookAhead = const Duration(hours: 24),
+    }) => RemoteTransportRepository(
+      baseUrl: Uri.parse('https://api.example.ro'),
+      client: c,
+      now: () => DateTime.utc(2026, 10, 22, 14, 42, 23),
+      lookBehind: lookBehind,
+      lookAhead: lookAhead,
+      logger: logs.add,
+    );
+
+    Map<String, Object?> golden() =>
+        (jsonDecode(goldenText()) as Map).cast<String, Object?>();
+
+    MockClient answering(Object body) => MockClient(
+      (_) async => http.Response.bytes(utf8.encode(jsonEncode(body)), 200),
+    );
+
+    test('from and to are current UTC instants with an explicit offset', () {
+      final url = build(answering(golden()), []).arrivalsUrl;
+      final from = url.queryParameters['from']!;
+      final to = url.queryParameters['to']!;
+      expect(from, '2026-10-22T14:12:23.000Z');
+      expect(to, '2026-10-23T14:42:23.000Z');
+      for (final value in [from, to]) {
+        expect(value, endsWith('Z'));
+        expect(DateTime.parse(value).isUtc, isTrue);
+      }
+      expect(
+        DateTime.parse(to).difference(DateTime.parse(from)),
+        const Duration(hours: 24, minutes: 30),
+      );
+    });
+
+    test('the window can be 6 h back and 48 h ahead', () {
+      final url = build(
+        answering(golden()),
+        [],
+        lookBehind: const Duration(hours: 6),
+        lookAhead: const Duration(hours: 48),
+      ).arrivalsUrl;
+      expect(url.queryParameters['from'], '2026-10-22T08:42:23.000Z');
+      expect(url.queryParameters['to'], '2026-10-24T14:42:23.000Z');
+    });
+
+    test('the query is encoded and round-trips, with no bare plus sign', () {
+      final url = build(answering(golden()), []).arrivalsUrl;
+      expect(url.query, contains('from=2026-10-22T14%3A12%3A23.000Z'));
+      expect(url.query, isNot(contains('+')));
+      expect(Uri.parse(url.toString()).queryParameters, url.queryParameters);
+      // An offset such as +02:00 would be encoded, never sent as a space.
+      expect(
+        Uri(queryParameters: {'from': '2026-10-22T16:12:23+02:00'}).query,
+        'from=2026-10-22T16%3A12%3A23%2B02%3A00',
+      );
+    });
+
+    test(
+      'the request carries both parameters and logs them with the zone',
+      () async {
+        final logs = <String>[];
+        final seen = <Uri>[];
+        final repo = build(
+          MockClient((request) async {
+            seen.add(request.url);
+            return http.Response.bytes(utf8.encode(goldenText()), 200);
+          }),
+          logs,
+        );
+        await repo.fetchUpcomingArrivals();
+        expect(seen.single.queryParameters.keys, containsAll(['from', 'to']));
+        final get = logs.firstWhere((l) => l.contains('GET '));
+        expect(get, contains('from=2026-10-22T14:12:23.000Z'));
+        expect(get, contains('to=2026-10-23T14:42:23.000Z'));
+        expect(get, contains('UTC'));
+        expect(logs.any((l) => l.startsWith('[api] HTTP 200')), isTrue);
+      },
+    );
+
+    test('a non-empty response logs raw and parsed counts', () async {
+      final logs = <String>[];
+      final snapshot = await build(
+        answering(golden()),
+        logs,
+      ).fetchUpcomingArrivals();
+      final n = snapshot.services.length;
+      expect(n, greaterThan(0));
+      expect(logs, contains('[api] records: $n raw, $n parsed, 0 rejected'));
+      expect(logs, contains('[api] ok: $n services'));
+    });
+
+    test('records the parser rejects are counted and named', () async {
+      final body = golden();
+      body['services'] = [
+        ...(body['services'] as List),
+        {'id': 'broken'},
+      ];
+      final logs = <String>[];
+      final snapshot = await build(
+        answering(body),
+        logs,
+      ).fetchUpcomingArrivals();
+      final parsed = snapshot.services.length;
+      expect(
+        logs,
+        contains(
+          '[api] records: ${parsed + 1} raw, $parsed parsed, 1 rejected',
+        ),
+      );
+      expect(logs.any((l) => l.startsWith('[api] rejected services[')), isTrue);
+    });
+
+    test('zero arrivals because every source failed is told apart', () async {
+      final body = golden();
+      body['services'] = <Object>[];
+      body['sources'] = [
+        for (final s in (body['sources'] as List))
+          {
+            ...(s as Map).cast<String, Object?>(),
+            'status': 'unavailable',
+            'message': 'Conținutul sursei nu a putut fi interpretat.',
+            'serviceCount': 0,
+          },
+      ];
+      final logs = <String>[];
+      final snapshot = await build(
+        answering(body),
+        logs,
+      ).fetchUpcomingArrivals();
+      expect(snapshot.services, isEmpty);
+      expect(snapshot.isMock, isFalse);
+      expect(logs, contains('[api] records: 0 raw, 0 parsed, 0 rejected'));
+      expect(logs.where((l) => l.startsWith('[api] source ')), isNotEmpty);
+      expect(
+        logs.any((l) => l.contains('ok but empty: the server has no usable')),
+        isTrue,
+      );
+    });
+
+    test(
+      'zero arrivals with working sources is a plain empty window',
+      () async {
+        final body = golden();
+        body['services'] = <Object>[];
+        final logs = <String>[];
+        await build(answering(body), logs).fetchUpcomingArrivals();
+        expect(
+          logs.any((l) => l.contains('sources are working, no arrivals')),
+          isTrue,
+        );
+        expect(logs.any((l) => l.contains('no usable source')), isFalse);
+      },
+    );
+
+    test('an incompatible response is logged as such, not as empty', () async {
+      final logs = <String>[];
+      await expectLater(
+        build(answering({'schemaVersion': 2}), logs).fetchUpcomingArrivals(),
+        throwsA(isA<TransportFetchException>()),
+      );
+      expect(logs.any((l) => l.contains('incompatible response')), isTrue);
+      expect(logs.any((l) => l.contains('ok')), isFalse);
+    });
+  });
+
   group('AppConfig', () {
     test('a normal run uses the central default URL', () {
       expect(AppConfig.apiBaseUrl, AppConfig.defaultApiBaseUrl);
       expect(
         AppConfig.defaultApiBaseUrl,
-        startsWith('https://REPLACE_AFTER_RENDER_DEPLOY'),
+        'https://suceava-travel-alerts-api.onrender.com',
       );
       expect(ProviderConfig.environmentKey, 'TRAVEL_ALERTS_API_BASE_URL');
+      final config = ProviderConfig.fromEnvironment();
+      expect(config.isValid, isTrue);
+      expect(config.config.apiBaseUrl, Uri.parse(AppConfig.defaultApiBaseUrl));
     });
 
-    test('the unreplaced placeholder is not used as a backend', () {
-      final result = ProviderConfig.validate(AppConfig.defaultApiBaseUrl);
-      expect(result.config.hasBackend, isFalse);
-      expect(result.errors.single, contains('app_config.dart'));
+    test('an override is accepted; empty turns the backend off', () {
       expect(
-        createTransportRepository(result.config),
-        isA<MockTransportRepository>(),
+        ProviderConfig.validate('http://127.0.0.1:8080').config.apiBaseUrl,
+        Uri.parse('http://127.0.0.1:8080'),
       );
+      final off = ProviderConfig.validate('');
+      expect(off.isValid, isTrue);
+      expect(off.config.hasBackend, isFalse);
     });
 
-    test(
-      'a real hosted URL or an override is accepted; empty turns it off',
-      () {
-        expect(
-          ProviderConfig.validate(
-            'https://suceava-travel-alerts-api.onrender.com',
-          ).config.hasBackend,
-          isTrue,
-        );
-        expect(
-          ProviderConfig.validate('http://127.0.0.1:8080').config.hasBackend,
-          isTrue,
-        );
-        final off = ProviderConfig.validate('');
-        expect(off.isValid, isTrue);
-        expect(off.config.hasBackend, isFalse);
-      },
-    );
-  });
-
-  group('FallbackTransportRepository', () {
-    final demo = MockTransportRepository(
-      clock: () => testNow,
-      latency: Duration.zero,
-    );
-
-    test(
-      'returns the real data when the backend works, with no demo mixed in',
-      () async {
-        final repo = FallbackTransportRepository(
-          primary: RemoteTransportRepository(
-            baseUrl: Uri.parse('https://api.example.ro'),
-            client: MockClient(
-              (_) async => http.Response.bytes(utf8.encode(goldenText()), 200),
-            ),
-          ),
-          fallback: demo,
-        );
-        final snapshot = await repo.fetchUpcomingArrivals();
-        expect(snapshot.isMock, isFalse);
-        expect(snapshot.degradedReason, isNull);
-        expect(snapshot.services.any((s) => s.source.isMock), isFalse);
-      },
-    );
-
-    test(
-      'falls back to labelled demo data, and says why, when the backend fails',
-      () async {
-        final repo = FallbackTransportRepository(
-          primary: RemoteTransportRepository(
-            baseUrl: Uri.parse('https://api.example.ro'),
-            client: MockClient((_) async => http.Response('down', 503)),
-            retryDelay: Duration.zero,
-          ),
-          fallback: demo,
-        );
-        final snapshot = await repo.fetchUpcomingArrivals();
-        expect(snapshot.isMock, isTrue);
-        expect(snapshot.degradedReason, FallbackTransportRepository.reason);
-        expect(snapshot.services.every((s) => s.source.isMock), isTrue);
-      },
-    );
+    test('requests use the central URL and no other host', () async {
+      final seen = <Uri>[];
+      final repo = createTransportRepository(
+        ProviderConfig.fromEnvironment().config,
+        client: MockClient((request) async {
+          seen.add(request.url);
+          return http.Response.bytes(utf8.encode(goldenText()), 200);
+        }),
+      );
+      await repo.fetchUpcomingArrivals();
+      expect(seen.single.origin, AppConfig.defaultApiBaseUrl);
+      expect(seen.single.path, '/v1/arrivals');
+    });
   });
 
   group('createTransportRepository', () {
@@ -441,13 +592,11 @@ void main() {
       );
     });
 
-    test('with a valid backend URL it uses the backend with demo fallback', () {
-      final repo = createTransportRepository(
-        ProviderConfig.validate('https://api.example.ro').config,
-      );
-      expect(repo, isA<FallbackTransportRepository>());
+    test('with a valid backend URL it uses the backend alone, no demo', () {
       expect(
-        (repo as FallbackTransportRepository).primary,
+        createTransportRepository(
+          ProviderConfig.validate('https://api.example.ro').config,
+        ),
         isA<RemoteTransportRepository>(),
       );
     });

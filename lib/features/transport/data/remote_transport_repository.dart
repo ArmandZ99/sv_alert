@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'sources/normalized_arrivals_parser.dart';
+import 'sources/source_status.dart';
 import 'transport_repository.dart';
 
 /// Reads arrivals from the ingestion backend (`GET /v1/arrivals`). All
@@ -14,8 +15,8 @@ class RemoteTransportRepository implements TransportRepository {
   RemoteTransportRepository({
     required this.baseUrl,
     http.Client? client,
-    this.timeout = const Duration(seconds: 40),
-    this.maxAttempts = 3,
+    this.timeout = const Duration(seconds: 120),
+    this.maxAttempts = 2,
     this.retryDelay = const Duration(seconds: 3),
     this.lookBehind = const Duration(minutes: 30),
     this.lookAhead = const Duration(hours: 24),
@@ -28,8 +29,11 @@ class RemoteTransportRepository implements TransportRepository {
 
   final Uri baseUrl;
 
-  /// Per attempt. A free hosted service can take around a minute to wake up,
-  /// then needs a while to load its sources, so this is generous but bounded.
+  /// Per attempt. Measured on the deployed Render Free service: the first
+  /// request after idle took 83 s to be answered, and the sources then needed
+  /// about 45 s more to load. The server holds the connection while it wakes,
+  /// so one long attempt is better than several short ones that each abandon
+  /// it. Bounded: at most [maxAttempts] x this, plus the pauses.
   final Duration timeout;
 
   /// Total tries including the first; waits [retryDelay] x n between them.
@@ -79,7 +83,11 @@ class RemoteTransportRepository implements TransportRepository {
 
   Future<TransportSnapshot> _fetchOnce(int attempt) async {
     final url = arrivalsUrl;
-    _log('GET ${url.origin}${url.path} (attempt $attempt of $maxAttempts)');
+    _log(
+      'GET ${url.origin}${url.path} '
+      'from=${url.queryParameters['from']} to=${url.queryParameters['to']} '
+      '(UTC, offset Z; attempt $attempt of $maxAttempts)',
+    );
     final http.Response response;
     try {
       response = await _client
@@ -103,8 +111,11 @@ class RemoteTransportRepository implements TransportRepository {
       );
     }
 
+    _log(
+      'HTTP ${response.statusCode} ${response.headers['content-type'] ?? ''} '
+      '${response.bodyBytes.length} bytes',
+    );
     if (response.statusCode != 200) {
-      _log('HTTP ${response.statusCode}');
       final error = TransportFetchException(
         'Serverul de date a răspuns cu eroarea ${response.statusCode}.',
       );
@@ -125,8 +136,9 @@ class RemoteTransportRepository implements TransportRepository {
       );
     }
     try {
-      final snapshot = NormalizedArrivalsParser.parse(json).snapshot;
-      _log('ok: ${snapshot.services.length} services');
+      final parsed = NormalizedArrivalsParser.parse(json);
+      final snapshot = parsed.snapshot;
+      _logOutcome(snapshot, parsed.rejected);
       return snapshot;
     } on TransportFetchException catch (e) {
       _log('incompatible response: ${e.message}');
@@ -139,6 +151,41 @@ class RemoteTransportRepository implements TransportRepository {
     }
   }
 
+  /// Tells apart: data received, a valid answer with no arrivals, a valid
+  /// answer where the server's own sources failed, and records the parser
+  /// rejected.
+  void _logOutcome(TransportSnapshot snapshot, List<String> rejected) {
+    final parsedCount = snapshot.services.length;
+    _log(
+      'records: ${parsedCount + rejected.length} raw, $parsedCount parsed, '
+      '${rejected.length} rejected',
+    );
+    for (final reason in rejected.take(3)) {
+      _log('rejected $reason');
+    }
+    final failing = [
+      for (final s in snapshot.sources)
+        if (s.connection == SourceConnection.unavailable) s,
+    ];
+    for (final s in failing) {
+      final message = s.message.length > 160
+          ? '${s.message.substring(0, 160)}...'
+          : s.message;
+      _log('source ${s.id}: ${s.connection.name} - $message');
+    }
+    if (parsedCount > 0) {
+      _log('ok: $parsedCount services');
+    } else if (snapshot.sources.isNotEmpty &&
+        snapshot.sources.every((s) => !s.providesData)) {
+      _log(
+        'ok but empty: the server has no usable source '
+        '(${failing.length} of ${snapshot.sources.length} failed)',
+      );
+    } else {
+      _log('ok but empty: sources are working, no arrivals in this window');
+    }
+  }
+
   void _log(String message) => _logger?.call('[api] $message');
 
   void close() => _client.close();
@@ -148,36 +195,4 @@ class RemoteTransportRepository implements TransportRepository {
 class _TransientFailure implements Exception {
   const _TransientFailure(this.error);
   final TransportFetchException error;
-}
-
-/// Uses [primary] (the backend) and falls back to [fallback] (the demo data)
-/// only when the primary cannot be reached or read. The fallback snapshot says
-/// why, and its services stay individually marked as demo data.
-class FallbackTransportRepository implements TransportRepository {
-  const FallbackTransportRepository({
-    required this.primary,
-    required this.fallback,
-  });
-
-  final TransportRepository primary;
-  final TransportRepository fallback;
-
-  static const String reason =
-      'Datele reale nu au putut fi încărcate; se afișează date demonstrative.';
-
-  @override
-  Future<TransportSnapshot> fetchUpcomingArrivals() async {
-    try {
-      return await primary.fetchUpcomingArrivals();
-    } on TransportFetchException {
-      final demo = await fallback.fetchUpcomingArrivals();
-      return TransportSnapshot(
-        services: demo.services,
-        fetchedAt: demo.fetchedAt,
-        isMock: demo.isMock,
-        sources: demo.sources,
-        degradedReason: reason,
-      );
-    }
-  }
 }

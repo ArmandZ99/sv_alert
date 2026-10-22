@@ -169,7 +169,10 @@ void main() {
     final airport = snapshot.sources
         .firstWhere((s) => s.id == AirportTimetableAdapter.sourceId);
     expect(airport.connection, SourceConnection.unavailable);
-    expect(airport.message, contains('Structura sursei s-a schimbat'));
+    expect(airport.message, contains('nu a putut fi interpretat'));
+    // The status says what the server actually received.
+    expect(airport.message, contains('Primit: '));
+    expect(airport.message, contains('HTTP 200'));
     expect(
       snapshot.services
           .where((s) => s.sourceId == AirportTimetableAdapter.sourceId),

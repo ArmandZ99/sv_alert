@@ -92,15 +92,21 @@ class _ArrivalsPageState extends State<ArrivalsPage> {
                           actionLabel: Strings.retry,
                           onAction: arrivals.refresh,
                         )
-                      : const LoadingView(),
+                      : LoadingView(slow: arrivals.isSlowLoad),
                 )
               else if (arrivals.allServices.isEmpty)
-                const SliverToBoxAdapter(
-                  child: MessageView(
-                    icon: Icons.event_busy_outlined,
-                    title: Strings.emptyTitle,
-                    body: Strings.emptyBody,
-                  ),
+                SliverToBoxAdapter(
+                  child: arrivals.noSourceAvailable
+                      ? const MessageView(
+                          icon: Icons.cloud_off_outlined,
+                          title: Strings.noSourcesTitle,
+                          body: Strings.noSourcesBody,
+                        )
+                      : const MessageView(
+                          icon: Icons.event_busy_outlined,
+                          title: Strings.emptyTitle,
+                          body: Strings.emptyBody,
+                        ),
                 )
               else if (results.isEmpty)
                 SliverToBoxAdapter(
